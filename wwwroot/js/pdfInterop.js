@@ -1415,11 +1415,25 @@ function escapeHtml(text) {
 
 export async function generatePdfThumbnail(pdfBytes) {
     try {
-        if (!pdfjsLib) await initialize();
+        console.log('generatePdfThumbnail: Starting PDF thumbnail generation');
 
+        // Initialize if not already done
+        if (!pdfjsLib) {
+            console.log('generatePdfThumbnail: pdfjsLib not loaded, initializing...');
+            await initialize();
+        }
+
+        if (!pdfjsLib) {
+            console.error('generatePdfThumbnail: pdfjsLib still not available after initialization');
+            throw new Error('PDF.js library not loaded');
+        }
+
+        console.log('generatePdfThumbnail: Loading PDF document');
         const uint8Array = new Uint8Array(pdfBytes);
         const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
         const pdf = await loadingTask.promise;
+
+        console.log(`generatePdfThumbnail: PDF loaded, ${pdf.numPages} pages`);
         const page = await pdf.getPage(1);
 
         const scale = 1.0;
@@ -1461,9 +1475,12 @@ export async function generatePdfThumbnail(pdfBytes) {
         thumbnailCanvas.height = height;
         thumbnailContext.drawImage(canvas, 0, 0, width, height);
 
-        return thumbnailCanvas.toDataURL('image/jpeg', 0.8);
+        const dataUrl = thumbnailCanvas.toDataURL('image/jpeg', 0.8);
+        console.log('generatePdfThumbnail: Successfully generated thumbnail');
+        return dataUrl;
     } catch (error) {
-        console.error('Error generating PDF thumbnail:', error);
+        console.error('generatePdfThumbnail: Error generating PDF thumbnail:', error);
+        console.error('Error details:', error.message, error.stack);
         return getPdfIcon();
     }
 }
