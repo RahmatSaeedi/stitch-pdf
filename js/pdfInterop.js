@@ -1671,6 +1671,11 @@ export async function generateMarkdownThumbnail(markdownBytes) {
 
 export async function generateCsvThumbnail(csvBytes) {
     try {
+        // Initialize if not already done
+        if (!Papa) {
+            await initialize();
+        }
+
         // Decode CSV from bytes
         const decoder = new TextDecoder('utf-8');
         const csvText = decoder.decode(csvBytes);
@@ -1776,6 +1781,11 @@ export async function generateHtmlThumbnail(htmlBytes) {
 
 export async function generateTiffThumbnail(tiffBytes) {
     try {
+        // Initialize if not already done
+        if (!UTIF) {
+            await initialize();
+        }
+
         if (!UTIF) {
             throw new Error('UTIF library not loaded');
         }
@@ -1851,6 +1861,11 @@ export async function generateAvifThumbnail(avifBytes) {
 
 export async function generateDocxThumbnail(docxBytes) {
     try {
+        // Initialize if not already done
+        if (!mammoth) {
+            await initialize();
+        }
+
         if (!mammoth) {
             throw new Error('Mammoth library not loaded');
         }
@@ -1904,6 +1919,11 @@ export async function generateDocxThumbnail(docxBytes) {
 
 export async function generateXlsxThumbnail(xlsxBytes) {
     try {
+        // Initialize if not already done
+        if (!XLSX) {
+            await initialize();
+        }
+
         if (!XLSX) {
             throw new Error('XLSX library not loaded');
         }
