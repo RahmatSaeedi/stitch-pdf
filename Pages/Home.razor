@@ -1114,7 +1114,7 @@
                 var parameters = new DialogParameters
                 {
                     { "FileName", fileName },
-                    { "FileSize", data.Length },
+                    { "FileSize", (long)data.Length },
                     { "DataUrl", result.DataUrl }
                 };
 

@@ -243,7 +243,7 @@
                     var parameters = new DialogParameters
                     {
                         { "FileName", item.FileName },
-                        { "FileSize", item.OutputData!.Length },
+                        { "FileSize", (long)item.OutputData!.Length },
                         { "DataUrl", downloadResult.DataUrl }
                     };
 
