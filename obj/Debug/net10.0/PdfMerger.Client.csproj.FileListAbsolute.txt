@@ -1180,8 +1180,8 @@ C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framew
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framework\PdfMerger.Client.vr200al9kr.wasm.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framework\PdfMerger.Client.3o2g6ediak.pdb.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framework\dotnet.hqsdjk2gxx.js.gz
-C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\re8e405kmq-{0}-1bbqq1answ-1bbqq1answ.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\571gavp13d-{0}-vr200al9kr-vr200al9kr.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\sbtmew76mg-{0}-3o2g6ediak-3o2g6ediak.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\iu04nlq782-{0}-hqsdjk2gxx-hqsdjk2gxx.gz
-C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\0ocmneutis-{0}-cyxkb0t4j3-cyxkb0t4j3.gz
+C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\re8e405kmq-{0}-s3srsgxchs-s3srsgxchs.gz
+C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\0ocmneutis-{0}-4gr9ztidyd-4gr9ztidyd.gz
