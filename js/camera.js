@@ -4,27 +4,84 @@ let videoElement = null;
 
 export async function startCamera(videoElementId) {
     try {
+        // Wait a bit for the DOM to be fully ready (iOS fix)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Get video element
         videoElement = document.getElementById(videoElementId);
         if (!videoElement) {
+            console.error("Video element not found with ID:", videoElementId);
             throw new Error("Video element not found");
         }
 
-        // Request camera access with high resolution
-        stream = await navigator.mediaDevices.getUserMedia({
+        console.log("Starting camera for iOS/mobile device...");
+
+        // iOS-friendly camera constraints
+        const constraints = {
             video: {
-                facingMode: 'environment', // Use back camera on mobile
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-            }
+                facingMode: { ideal: 'environment' }, // Prefer back camera
+                width: { ideal: 1920, max: 1920 },
+                height: { ideal: 1080, max: 1080 }
+            },
+            audio: false
+        };
+
+        // Request camera access
+        console.log("Requesting camera permission...");
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Camera permission granted, stream obtained");
+
+        // Set up video element
+        videoElement.srcObject = stream;
+        videoElement.setAttribute('autoplay', '');
+        videoElement.setAttribute('playsinline', ''); // Critical for iOS
+        videoElement.setAttribute('muted', ''); // Required for autoplay on some devices
+
+        // Ensure video metadata is loaded before playing
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Video load timeout")), 10000);
+
+            videoElement.onloadedmetadata = () => {
+                clearTimeout(timeout);
+                console.log("Video metadata loaded");
+                resolve();
+            };
+
+            videoElement.onerror = (e) => {
+                clearTimeout(timeout);
+                console.error("Video element error:", e);
+                reject(e);
+            };
         });
 
-        videoElement.srcObject = stream;
-        await videoElement.play();
+        // Play the video
+        console.log("Attempting to play video...");
+        const playPromise = videoElement.play();
 
+        if (playPromise !== undefined) {
+            await playPromise;
+            console.log("Video playing successfully");
+        }
+
+        // Verify video is actually playing
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (videoElement.paused) {
+            console.warn("Video is paused, attempting to play again...");
+            await videoElement.play();
+        }
+
+        console.log("Camera started successfully");
         return true;
     } catch (error) {
-        console.error("Error starting camera:", error);
+        console.error("Error starting camera:", error.name, error.message, error);
+
+        // Clean up on error
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+
         return false;
     }
 }
