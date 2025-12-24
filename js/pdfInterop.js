@@ -2218,9 +2218,36 @@ function getContentTypeFromExtension(ext) {
     return contentTypes[ext] || 'application/octet-stream';
 }
 
+// Store the current file for mobile download dialog
+let currentFileBlob = null;
+let currentFileName = null;
+
+export function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform));
+}
+
 export function downloadFile(fileName, byteArray) {
     try {
         const blob = new Blob([new Uint8Array(byteArray)], { type: 'application/pdf' });
+
+        // On mobile, return a data URL and signal that we need to show the dialog
+        // instead of auto-downloading
+        if (isMobileDevice()) {
+            // Store blob for share/download actions
+            currentFileBlob = blob;
+            currentFileName = fileName;
+
+            // Return special signal to show mobile download dialog
+            return {
+                isMobile: true,
+                fileName: fileName,
+                fileSize: blob.size,
+                dataUrl: URL.createObjectURL(blob)
+            };
+        }
+
+        // Desktop: Direct download
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -2229,10 +2256,91 @@ export function downloadFile(fileName, byteArray) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+
+        return { isMobile: false };
     } catch (error) {
         console.error('Error downloading file:', error);
         throw error;
     }
+}
+
+// Share file using Web Share API (mobile)
+export async function shareFile() {
+    try {
+        if (!currentFileBlob || !currentFileName) {
+            throw new Error('No file available to share');
+        }
+
+        if (!navigator.share || !navigator.canShare) {
+            throw new Error('Web Share API not supported');
+        }
+
+        const file = new File([currentFileBlob], currentFileName, { type: 'application/pdf' });
+        const shareData = {
+            files: [file],
+            title: 'Stitch PDF - ' + currentFileName,
+            text: 'PDF generated with Stitch PDF'
+        };
+
+        if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            return true;
+        } else {
+            throw new Error('Cannot share this file');
+        }
+    } catch (error) {
+        console.error('Error sharing file:', error);
+        throw error;
+    }
+}
+
+// Force download on mobile (opens in new tab with download prompt)
+export function downloadFileMobile() {
+    try {
+        if (!currentFileBlob || !currentFileName) {
+            throw new Error('No file available to download');
+        }
+
+        const url = URL.createObjectURL(currentFileBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentFileName;
+        a.target = '_blank'; // Open in new tab on mobile to avoid navigation
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Clean up after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        return true;
+    } catch (error) {
+        console.error('Error downloading file on mobile:', error);
+        throw error;
+    }
+}
+
+// Open PDF in new tab for preview
+export function openPdfPreview() {
+    try {
+        if (!currentFileBlob) {
+            throw new Error('No file available to preview');
+        }
+
+        const url = URL.createObjectURL(currentFileBlob);
+        window.open(url, '_blank');
+
+        return true;
+    } catch (error) {
+        console.error('Error opening PDF preview:', error);
+        throw error;
+    }
+}
+
+// Clean up stored file
+export function cleanupMobileFile() {
+    currentFileBlob = null;
+    currentFileName = null;
 }
 
 export async function downloadAsZip(fileName, files) {
