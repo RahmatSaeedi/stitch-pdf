@@ -1174,7 +1174,6 @@ C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\g0wr
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\cpiu1tmevj-{0}-5dcfdrjv7a-5dcfdrjv7a.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\ej2ebrgduc-{0}-kybima5av9-kybima5av9.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\o0hx7mwteg-{0}-prk0u3tpm0-prk0u3tpm0.gz
-C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\re8e405kmq-{0}-3e2jneqmrm-3e2jneqmrm.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framework\PdfMerger.Client.vhg10yaicw.wasm
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framework\PdfMerger.Client.kl1mjbwxro.pdb
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framework\dotnet.lx2d15e1m9.js
@@ -1184,4 +1183,5 @@ C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\bin\Debug\net10.0\wwwroot\_framew
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\571gavp13d-{0}-vhg10yaicw-vhg10yaicw.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\sbtmew76mg-{0}-kl1mjbwxro-kl1mjbwxro.gz
 C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\iu04nlq782-{0}-lx2d15e1m9-lx2d15e1m9.gz
-C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\0ocmneutis-{0}-muatiliq9w-muatiliq9w.gz
+C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\re8e405kmq-{0}-4d2ulw3zuf-4d2ulw3zuf.gz
+C:\Users\rahmat\AI\PDF-Merger\PdfMerger.Client\obj\Debug\net10.0\compressed\0ocmneutis-{0}-bqfqm2ckw7-bqfqm2ckw7.gz

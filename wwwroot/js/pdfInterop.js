@@ -23,7 +23,8 @@ export async function initialize() {
         XLSX = window.XLSX;
 
         if (pdfjsLib) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.min.js';
+            // Use relative path to work with GitHub Pages base path
+            pdfjsLib.GlobalWorkerOptions.workerSrc = './lib/pdf.worker.min.js';
 
             // Suppress warnings about font/glyph issues - PDF.js handles these automatically
             // Only show actual errors
