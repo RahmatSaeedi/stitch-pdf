@@ -2264,6 +2264,11 @@ export function isMobileDevice() {
            (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform));
 }
 
+export function isIOSDevice() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform));
+}
+
 export function downloadFile(fileName, byteArray) {
     try {
         const blob = new Blob([new Uint8Array(byteArray)], { type: 'application/pdf' });
@@ -2304,29 +2309,60 @@ export function downloadFile(fileName, byteArray) {
 // Share file using Web Share API (mobile)
 export async function shareFile() {
     try {
+        console.log('shareFile: Starting share process');
+
         if (!currentFileBlob || !currentFileName) {
+            console.error('shareFile: No file available');
             throw new Error('No file available to share');
         }
 
-        if (!navigator.share || !navigator.canShare) {
-            throw new Error('Web Share API not supported');
+        console.log(`shareFile: File ready - ${currentFileName}, size: ${currentFileBlob.size}`);
+
+        if (!navigator.share) {
+            console.error('shareFile: Web Share API not supported');
+            throw new Error('Web Share API not supported on this device');
         }
 
         const file = new File([currentFileBlob], currentFileName, { type: 'application/pdf' });
+        console.log('shareFile: File object created');
+
         const shareData = {
             files: [file],
-            title: 'Stitch PDF - ' + currentFileName,
-            text: 'PDF generated with Stitch PDF'
+            title: currentFileName,
+            text: 'PDF created with Stitch PDF'
         };
 
-        if (navigator.canShare(shareData)) {
+        // Check if we can share files
+        if (!navigator.canShare) {
+            console.log('shareFile: canShare not available, attempting share anyway');
             await navigator.share(shareData);
+            console.log('shareFile: Share successful');
+            return true;
+        }
+
+        if (navigator.canShare(shareData)) {
+            console.log('shareFile: canShare returned true, sharing...');
+            await navigator.share(shareData);
+            console.log('shareFile: Share successful');
             return true;
         } else {
-            throw new Error('Cannot share this file');
+            console.error('shareFile: canShare returned false');
+            // On some iOS versions, canShare might return false but share still works
+            // Try anyway
+            console.log('shareFile: Attempting share despite canShare being false');
+            await navigator.share(shareData);
+            console.log('shareFile: Share successful');
+            return true;
         }
     } catch (error) {
-        console.error('Error sharing file:', error);
+        console.error('shareFile: Error sharing file:', error.name, error.message);
+
+        // If user cancelled, that's not really an error
+        if (error.name === 'AbortError') {
+            console.log('shareFile: User cancelled share');
+            throw new Error('Share cancelled');
+        }
+
         throw error;
     }
 }
@@ -2334,25 +2370,58 @@ export async function shareFile() {
 // Force download on mobile (opens in new tab with download prompt)
 export function downloadFileMobile() {
     try {
+        console.log('downloadFileMobile: Starting download');
+
         if (!currentFileBlob || !currentFileName) {
+            console.error('downloadFileMobile: No file available');
             throw new Error('No file available to download');
         }
 
-        const url = URL.createObjectURL(currentFileBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = currentFileName;
-        a.target = '_blank'; // Open in new tab on mobile to avoid navigation
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        console.log(`downloadFileMobile: File ready - ${currentFileName}`);
 
-        // Clean up after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        // For iOS, we need to use a different approach since download attribute doesn't work
+        if (isIOSDevice()) {
+            console.log('downloadFileMobile: iOS detected, opening in new window');
 
-        return true;
+            // Create blob URL
+            const url = URL.createObjectURL(currentFileBlob);
+
+            // Open in new window - iOS will show the PDF with save/share options
+            const newWindow = window.open(url, '_blank');
+
+            if (!newWindow) {
+                console.error('downloadFileMobile: Popup blocked');
+                throw new Error('Please allow popups to download files');
+            }
+
+            console.log('downloadFileMobile: PDF opened in new window');
+
+            // Clean up after a delay
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+            return true;
+        } else {
+            // Android and other devices
+            console.log('downloadFileMobile: Non-iOS device, using download link');
+
+            const url = URL.createObjectURL(currentFileBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            console.log('downloadFileMobile: Download link clicked');
+
+            // Clean up after a delay
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            return true;
+        }
     } catch (error) {
-        console.error('Error downloading file on mobile:', error);
+        console.error('downloadFileMobile: Error downloading file:', error);
         throw error;
     }
 }

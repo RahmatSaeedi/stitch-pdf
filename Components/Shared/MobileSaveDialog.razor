@@ -82,11 +82,11 @@
                     @if (_isProcessing && _currentAction == "download")
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                        <span>Downloading...</span>
+                        <span>@(_isIOS ? "Opening..." : "Downloading...")</span>
                     }
                     else
                     {
-                        <span>Download to Device</span>
+                        <span>@(_isIOS ? "Open in Safari" : "Download to Device")</span>
                     }
                 </MudButton>
 
@@ -109,9 +109,18 @@
                 </MudButton>
             </MudStack>
 
-            <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Style="margin-top: 8px;">
-                💡 Tip: Use "Share" to save directly to your Files app or share with other apps
-            </MudText>
+            @if (_isIOS)
+            {
+                <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Style="margin-top: 8px;">
+                    💡 iOS Tip: Tap "Share" then "Save to Files" to choose where to save your PDF
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Style="margin-top: 8px;">
+                    💡 Tip: Use "Share" to save to your Files app or share with other apps
+                </MudText>
+            }
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -137,6 +146,7 @@
     private string _currentAction = "";
     private string? _errorMessage;
     private IJSObjectReference? _pdfModule;
+    private bool _isIOS;
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,9 +156,13 @@
 
             _pdfModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
 
+            // Check if this is iOS
+            _isIOS = await _pdfModule.InvokeAsync<bool>("isIOSDevice");
+            Console.WriteLine($"iOS device: {_isIOS}");
+
             // Check if Web Share API is supported
             _supportsWebShare = await JSRuntime.InvokeAsync<bool>("eval",
-                "navigator.share !== undefined && navigator.canShare !== undefined");
+                "navigator.share !== undefined");
 
             Console.WriteLine($"Web Share API supported: {_supportsWebShare}");
         }
@@ -157,6 +171,7 @@
             Console.WriteLine($"Error initializing mobile save dialog: {ex.Message}");
             _errorMessage = "Some features may not be available on this device.";
             _supportsWebShare = false;
+            _isIOS = false;
         }
 
         StateHasChanged();
@@ -203,17 +218,37 @@
         try
         {
             await _pdfModule.InvokeVoidAsync("downloadFileMobile");
-            Snackbar.Add("Download started! Check your browser's downloads.", Severity.Success);
+
+            if (_isIOS)
+            {
+                Snackbar.Add("PDF opened in Safari. Tap the Share icon to save to Files.", Severity.Success, config =>
+                {
+                    config.VisibleStateDuration = 4000;
+                });
+            }
+            else
+            {
+                Snackbar.Add("Download started! Check your browser's downloads.", Severity.Success);
+            }
 
             // Don't close the dialog immediately, give user time to see the message
-            await Task.Delay(1500);
+            await Task.Delay(2000);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error downloading file: {ex.Message}");
-            _errorMessage = "Download failed. Try opening in a new tab instead.";
-            Snackbar.Add($"Download error: {ex.Message}", Severity.Error);
+
+            if (_isIOS)
+            {
+                _errorMessage = "Couldn't open PDF. Please enable popups or try the Share option.";
+                Snackbar.Add(ex.Message.Contains("popup") ? "Please allow popups to view the PDF" : $"Error: {ex.Message}", Severity.Warning);
+            }
+            else
+            {
+                _errorMessage = "Download failed. Try the preview option instead.";
+                Snackbar.Add($"Download error: {ex.Message}", Severity.Error);
+            }
         }
         finally
         {
