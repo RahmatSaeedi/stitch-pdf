@@ -52,9 +52,20 @@
 
     <!-- Favicons and App Icons -->
     <link rel="icon" type="image/svg+xml" href="icon.svg" />
-    <link rel="apple-touch-icon" href="icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png" />
 
-    <link href="_framework/dotnet.jnqgno0bpy.js" rel="preload" as="script" fetchpriority="high" crossorigin="anonymous" integrity="sha256-EX6ZU0byDEWkcK9moY4JVMMVnVauewnXFGOWapck25U=" />
+    <!-- Apple Touch Icons (PNG only - SVG not supported on iOS) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+
+    <!-- Android/Chrome -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+    <link href="_framework/dotnet.00atjnezqz.js" rel="preload" as="script" fetchpriority="high" crossorigin="anonymous" integrity="sha256-4CZMBv6z+8AWqO+YPlvgOo0trc1KXlLKDjTZL3sK8Zk=" />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="css/app.css" />
@@ -63,7 +74,7 @@
     <script type="importmap">{
   "imports": {
     "./_framework/blazor.webassembly.js": "./_framework/blazor.webassembly.66stpp682q.js",
-    "./_framework/dotnet.js": "./_framework/dotnet.jnqgno0bpy.js",
+    "./_framework/dotnet.js": "./_framework/dotnet.00atjnezqz.js",
     "./_framework/dotnet.native.js": "./_framework/dotnet.native.cs8mcre4gh.js",
     "./_framework/dotnet.runtime.js": "./_framework/dotnet.runtime.0j6ezsi0n0.js"
   },
@@ -71,8 +82,8 @@
   "integrity": {
     "./_framework/blazor.webassembly.66stpp682q.js": "sha256-3lCWrko3zwspV40aQhs2S/IMkRSarnHRKIdkHhuXIBA=",
     "./_framework/blazor.webassembly.js": "sha256-3lCWrko3zwspV40aQhs2S/IMkRSarnHRKIdkHhuXIBA=",
-    "./_framework/dotnet.jnqgno0bpy.js": "sha256-EX6ZU0byDEWkcK9moY4JVMMVnVauewnXFGOWapck25U=",
-    "./_framework/dotnet.js": "sha256-EX6ZU0byDEWkcK9moY4JVMMVnVauewnXFGOWapck25U=",
+    "./_framework/dotnet.00atjnezqz.js": "sha256-4CZMBv6z+8AWqO+YPlvgOo0trc1KXlLKDjTZL3sK8Zk=",
+    "./_framework/dotnet.js": "sha256-4CZMBv6z+8AWqO+YPlvgOo0trc1KXlLKDjTZL3sK8Zk=",
     "./_framework/dotnet.native.cs8mcre4gh.js": "sha256-/I3SDHIle7heAxlUGBrgxax+lkKyWyRLBVEJmTHJSCs=",
     "./_framework/dotnet.native.js": "sha256-/I3SDHIle7heAxlUGBrgxax+lkKyWyRLBVEJmTHJSCs=",
     "./_framework/dotnet.runtime.0j6ezsi0n0.js": "sha256-jCsbbdXoVd1zzGc0fQT2sz4mKuv0ANdurPVGo5Sc2jg=",
