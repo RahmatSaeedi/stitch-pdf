@@ -11,14 +11,32 @@
             @if (!_cameraAvailable)
             {
                 <MudAlert Severity="Severity.Warning">
-                    Camera not available or permission denied. Please check your browser settings.
+                    Camera not available or permission denied. Please check your browser settings and ensure you're using HTTPS.
                 </MudAlert>
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        Error: @_errorMessage
+                    </MudAlert>
+                }
             }
             else if (!_cameraStarted)
             {
                 <MudStack AlignItems="AlignItems.Center" Spacing="2" Style="padding: 40px;">
                     <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Starting camera...</MudText>
+                    @if (_showManualStart)
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="ManualStartCamera"
+                                   Style="margin-top: 16px;">
+                            Tap to Start Camera
+                        </MudButton>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Camera didn't start automatically? Try tapping the button above.
+                        </MudText>
+                    }
                 </MudStack>
             }
             else
@@ -89,7 +107,9 @@
     private IJSObjectReference? _cameraModule;
     private bool _cameraAvailable;
     private bool _cameraStarted;
+    private bool _showManualStart;
     private string? _capturedImage;
+    private string? _errorMessage;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -105,17 +125,59 @@
 
                 if (_cameraAvailable)
                 {
-                    // Start camera
+                    // Try to start camera automatically
+                    await Task.Delay(300); // Give more time for iOS to be ready
                     _cameraStarted = await _cameraModule.InvokeAsync<bool>("startCamera", "camera-preview");
                     StateHasChanged();
+
+                    // If camera didn't start after a delay, show manual start button
+                    if (!_cameraStarted)
+                    {
+                        await Task.Delay(2000);
+                        if (!_cameraStarted)
+                        {
+                            _showManualStart = true;
+                            StateHasChanged();
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing camera: {ex.Message}");
+                _errorMessage = ex.Message;
                 _cameraAvailable = false;
                 StateHasChanged();
             }
+        }
+    }
+
+    private async Task ManualStartCamera()
+    {
+        if (_cameraModule == null) return;
+
+        try
+        {
+            _showManualStart = false;
+            StateHasChanged();
+
+            await Task.Delay(100);
+            _cameraStarted = await _cameraModule.InvokeAsync<bool>("startCamera", "camera-preview");
+            StateHasChanged();
+
+            if (!_cameraStarted)
+            {
+                _showManualStart = true;
+                _errorMessage = "Failed to start camera. Please ensure camera permissions are granted.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error manually starting camera: {ex.Message}");
+            _errorMessage = ex.Message;
+            _showManualStart = true;
+            StateHasChanged();
         }
     }
 
