@@ -1106,12 +1106,42 @@
         try
         {
             var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
-            await module.InvokeVoidAsync("downloadFile", fileName, data);
+            var result = await module.InvokeAsync<DownloadResult>("downloadFile", fileName, data);
+
+            // If mobile device, show the mobile-friendly save dialog
+            if (result?.IsMobile == true)
+            {
+                var parameters = new DialogParameters
+                {
+                    { "FileName", fileName },
+                    { "FileSize", data.Length },
+                    { "DataUrl", result.DataUrl }
+                };
+
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    FullWidth = true,
+                    CloseButton = true,
+                    CloseOnEscapeKey = true
+                };
+
+                await DialogService.ShowAsync<MobileSaveDialog>("Save PDF", parameters, options);
+            }
         }
         catch (Exception ex)
         {
             Snackbar.Add($"❌ Download failed: {ex.Message}\n\n💡 Check your browser's download settings and popup blockers. Some browsers require user permission for downloads.", Severity.Error, config => config.VisibleStateDuration = 6000);
         }
+    }
+
+    // Helper class to match JavaScript return value
+    private class DownloadResult
+    {
+        public bool IsMobile { get; set; }
+        public string? FileName { get; set; }
+        public long FileSize { get; set; }
+        public string? DataUrl { get; set; }
     }
 
     private string FormatFileSize(long bytes)

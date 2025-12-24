@@ -4,6 +4,7 @@
 @inject IBatchOperationsService BatchService
 @inject IJSRuntime JSRuntime
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @implements IDisposable
 
 <MudDialog>
@@ -234,8 +235,32 @@
             {
                 // Download single file
                 var item = successfulItems.First();
-                await module.InvokeVoidAsync("downloadFile", item.FileName, item.OutputData);
-                Snackbar.Add("File downloaded", Severity.Success);
+                var downloadResult = await module.InvokeAsync<DownloadResultInfo>("downloadFile", item.FileName, item.OutputData);
+
+                // If mobile device, show the mobile-friendly save dialog
+                if (downloadResult?.IsMobile == true)
+                {
+                    var parameters = new DialogParameters
+                    {
+                        { "FileName", item.FileName },
+                        { "FileSize", item.OutputData!.Length },
+                        { "DataUrl", downloadResult.DataUrl }
+                    };
+
+                    var options = new DialogOptions
+                    {
+                        MaxWidth = MaxWidth.Small,
+                        FullWidth = true,
+                        CloseButton = true,
+                        CloseOnEscapeKey = true
+                    };
+
+                    await DialogService.ShowAsync<MobileSaveDialog>("Save PDF", parameters, options);
+                }
+                else
+                {
+                    Snackbar.Add("File downloaded", Severity.Success);
+                }
             }
             else
             {
@@ -298,5 +323,14 @@
     public void Dispose()
     {
         BatchService.OnBatchUpdated -= HandleBatchUpdated;
+    }
+
+    // Helper class to match JavaScript return value
+    private class DownloadResultInfo
+    {
+        public bool IsMobile { get; set; }
+        public string? FileName { get; set; }
+        public long FileSize { get; set; }
+        public string? DataUrl { get; set; }
     }
 }

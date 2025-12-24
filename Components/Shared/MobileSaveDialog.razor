@@ -1,0 +1,266 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                     Color="Color.Success"
+                     Style="font-size: 64px;" />
+
+            <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight: 600;">
+                PDF Ready!
+            </MudText>
+
+            <MudText Typo="Typo.body1" Align="Align.Center">
+                Your PDF has been successfully created. Choose how you'd like to save it:
+            </MudText>
+
+            <MudPaper Elevation="0" Style="background-color: var(--mud-palette-info-lighten); padding: 12px; border-radius: 8px; width: 100%;">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                        @FileName
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Size: @FormatFileSize(FileSize)
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Style="width: 100%;">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+            <MudStack Spacing="2" Style="width: 100%; margin-top: 16px;">
+                @if (_supportsWebShare)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.Share"
+                               OnClick="ShareFile"
+                               Disabled="_isProcessing">
+                        @if (_isProcessing && _currentAction == "share")
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Sharing...</span>
+                        }
+                        else
+                        {
+                            <span>Share or Save to Files</span>
+                        }
+                    </MudButton>
+                }
+
+                <MudButton Variant="@(_supportsWebShare ? Variant.Outlined : Variant.Filled)"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="DownloadFile"
+                           Disabled="_isProcessing">
+                    @if (_isProcessing && _currentAction == "download")
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Downloading...</span>
+                    }
+                    else
+                    {
+                        <span>Download to Device</span>
+                    }
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.OpenInNew"
+                           OnClick="PreviewFile"
+                           Disabled="_isProcessing">
+                    @if (_isProcessing && _currentAction == "preview")
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Opening...</span>
+                    }
+                    else
+                    {
+                        <span>Preview in New Tab</span>
+                    }
+                </MudButton>
+            </MudStack>
+
+            <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Style="margin-top: 8px;">
+                💡 Tip: Use "Share" to save directly to your Files app or share with other apps
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Default">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string FileName { get; set; } = "document.pdf";
+
+    [Parameter]
+    public long FileSize { get; set; }
+
+    [Parameter]
+    public string? DataUrl { get; set; }
+
+    private bool _supportsWebShare;
+    private bool _isProcessing;
+    private string _currentAction = "";
+    private string? _errorMessage;
+    private IJSObjectReference? _pdfModule;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _pdfModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
+
+            // Check if Web Share API is supported
+            _supportsWebShare = await JSRuntime.InvokeAsync<bool>("eval",
+                "navigator.share !== undefined && navigator.canShare !== undefined");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing mobile save dialog: {ex.Message}");
+            _supportsWebShare = false;
+        }
+    }
+
+    private async Task ShareFile()
+    {
+        if (_pdfModule == null) return;
+
+        _isProcessing = true;
+        _currentAction = "share";
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await _pdfModule.InvokeVoidAsync("shareFile");
+            Snackbar.Add("File shared successfully!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sharing file: {ex.Message}");
+            _errorMessage = "Couldn't share the file. Try downloading instead.";
+            Snackbar.Add("Share cancelled or not supported. Try the download option.", Severity.Info);
+        }
+        finally
+        {
+            _isProcessing = false;
+            _currentAction = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadFile()
+    {
+        if (_pdfModule == null) return;
+
+        _isProcessing = true;
+        _currentAction = "download";
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await _pdfModule.InvokeVoidAsync("downloadFileMobile");
+            Snackbar.Add("Download started! Check your browser's downloads.", Severity.Success);
+
+            // Don't close the dialog immediately, give user time to see the message
+            await Task.Delay(1500);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading file: {ex.Message}");
+            _errorMessage = "Download failed. Try opening in a new tab instead.";
+            Snackbar.Add($"Download error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            _currentAction = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task PreviewFile()
+    {
+        if (_pdfModule == null) return;
+
+        _isProcessing = true;
+        _currentAction = "preview";
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await _pdfModule.InvokeVoidAsync("openPdfPreview");
+            Snackbar.Add("PDF opened in new tab", Severity.Success);
+
+            // Don't close the dialog immediately
+            await Task.Delay(1000);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error previewing file: {ex.Message}");
+            _errorMessage = "Couldn't open preview. Check your popup blocker settings.";
+            Snackbar.Add($"Preview error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            _currentAction = "";
+            StateHasChanged();
+        }
+    }
+
+    private void Close()
+    {
+        MudDialog.Cancel();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_pdfModule != null)
+        {
+            try
+            {
+                await _pdfModule.DisposeAsync();
+            }
+            catch { }
+        }
+    }
+}

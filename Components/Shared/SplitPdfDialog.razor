@@ -402,8 +402,33 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("downloadFile", result.Name, result.Bytes);
-            Snackbar.Add($"✅ Downloaded: {result.Name}", Severity.Success);
+            var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
+            var downloadResult = await module.InvokeAsync<DownloadResult2>("downloadFile", result.Name, result.Bytes);
+
+            // If mobile device, show the mobile-friendly save dialog
+            if (downloadResult?.IsMobile == true)
+            {
+                var parameters = new DialogParameters
+                {
+                    { "FileName", result.Name },
+                    { "FileSize", result.Bytes.Length },
+                    { "DataUrl", downloadResult.DataUrl }
+                };
+
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    FullWidth = true,
+                    CloseButton = true,
+                    CloseOnEscapeKey = true
+                };
+
+                await DialogService.ShowAsync<MobileSaveDialog>("Save PDF", parameters, options);
+            }
+            else
+            {
+                Snackbar.Add($"✅ Downloaded: {result.Name}", Severity.Success);
+            }
         }
         catch (Exception ex)
         {
@@ -437,4 +462,14 @@
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+
+    // Helper class to match JavaScript return value
+    private class DownloadResult2
+    {
+        public bool IsMobile { get; set; }
+        public string? FileName { get; set; }
+        public long FileSize { get; set; }
+        public string? DataUrl { get; set; }
+    }
 }
