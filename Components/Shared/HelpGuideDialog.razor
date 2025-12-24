@@ -1,0 +1,279 @@
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Style="max-height: 70vh; overflow-y: auto;">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h4" Align="Align.Center" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Help" Class="mr-2" />
+                    Getting Started with Stitch PDF
+                </MudText>
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    All processing happens in your browser - your files never leave your device!
+                    Works offline as a Progressive Web App (PWA).
+                </MudAlert>
+
+                <!-- Quick Start -->
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Primary" Class="mr-1" />
+                            Quick Start
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            1. <strong>Upload files:</strong> Click "Add Files" or drag & drop PDFs/images/documents<br/>
+                            2. <strong>Organize:</strong> Drag to reorder, click to preview, delete unwanted files<br/>
+                            3. <strong>Process:</strong> Click "Merge PDFs" or choose conversion/compression options<br/>
+                            4. <strong>Download:</strong> Get your processed PDF instantly
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <!-- Core Features -->
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">Core Features</MudText>
+
+                <MudExpansionPanels MultiExpansion="true">
+                    <!-- Merge PDFs -->
+                    <MudExpansionPanel Text="Merge Multiple PDFs">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>How to merge:</strong><br/>
+                                • Add 2+ PDF files using "Add Files" button or drag & drop<br/>
+                                • Reorder files by dragging them<br/>
+                                • Click "Merge PDFs" to combine into a single document<br/>
+                                • Supports unlimited file size (client-side processing)
+                            </MudText>
+                            <MudAlert Severity="Severity.Success" Dense="true">
+                                <strong>Tip:</strong> Use keyboard shortcuts: Ctrl+O (add files), Ctrl+M (merge)
+                            </MudAlert>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Convert to PDF -->
+                    <MudExpansionPanel Text="Convert Documents & Images to PDF">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Supported formats:</strong><br/>
+                                • DOCX, DOC (Microsoft Word documents)<br/>
+                                • JPG, PNG, HEIC, TIFF, WebP (images)<br/>
+                                • Multiple images can be combined into one PDF<br/><br/>
+                                <strong>Conversion settings:</strong><br/>
+                                • Page size: A4, Letter, Legal, A3, Custom<br/>
+                                • Orientation: Portrait or Landscape<br/>
+                                • Image quality: Low, Medium, High<br/>
+                                • Margins: Adjustable for all formats
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Compress PDF -->
+                    <MudExpansionPanel Text="Compress & Optimize PDFs">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Compression levels:</strong><br/>
+                                • <strong>Low:</strong> Minimal compression, best quality (90% quality)<br/>
+                                • <strong>Medium:</strong> Balanced compression (70% quality)<br/>
+                                • <strong>High:</strong> Maximum compression, smaller file (50% quality)<br/><br/>
+                                Reduces file size by optimizing images and removing redundant data.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Digital Signatures -->
+                    <MudExpansionPanel Text="Add Digital Signatures">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Three signature methods:</strong><br/>
+                                • <strong>Draw:</strong> Use mouse/touch to draw your signature<br/>
+                                • <strong>Type:</strong> Enter text signature with custom fonts<br/>
+                                • <strong>Upload:</strong> Use a signature image file<br/><br/>
+                                Signatures are added as vector graphics for crisp quality at any size.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- OCR Text Extraction -->
+                    <MudExpansionPanel Text="OCR - Extract Text from PDFs (110+ Languages)">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Optical Character Recognition:</strong><br/>
+                                • Extract text from scanned PDFs and images<br/>
+                                • Support for 110+ languages including English, Spanish, French, German, Chinese, Arabic, and more<br/>
+                                • Export as TXT, JSON, or CSV<br/>
+                                • Copy text directly to clipboard<br/><br/>
+                                <strong>Best results:</strong> Use high-quality scans with clear text.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- QR & Barcode -->
+                    <MudExpansionPanel Text="Generate QR Codes & Barcodes">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>QR Codes:</strong><br/>
+                                • Create QR codes for URLs, text, contact info, WiFi<br/>
+                                • Customizable size and error correction<br/><br/>
+                                <strong>Barcodes:</strong><br/>
+                                • Formats: Code 128, EAN-13, UPC, Code 39<br/>
+                                • Add to PDF for product labels, inventory management
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Watermarks & Page Numbers -->
+                    <MudExpansionPanel Text="Add Watermarks & Page Numbers">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Watermarks:</strong><br/>
+                                • Add text or image watermarks<br/>
+                                • Adjustable opacity, position, rotation<br/>
+                                • Protect documents or add branding<br/><br/>
+                                <strong>Page Numbers:</strong><br/>
+                                • Formats: 1, 1/10, Page 1, Page 1 of 10<br/>
+                                • Position: Top/Bottom, Left/Center/Right<br/>
+                                • Custom starting number
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Password Protection -->
+                    <MudExpansionPanel Text="Password Protect PDFs">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Security options:</strong><br/>
+                                • User password: Required to open the PDF<br/>
+                                • Owner password: Required to modify the PDF<br/>
+                                • Restrict printing, copying, or editing<br/><br/>
+                                <strong>Encryption:</strong> Uses AES encryption for secure protection.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Batch Operations -->
+                    <MudExpansionPanel Text="Batch Operations">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Process multiple files at once:</strong><br/>
+                                • Create batch operations for merge, convert, compress<br/>
+                                • Add watermarks or page numbers to multiple PDFs<br/>
+                                • Track progress with real-time updates<br/>
+                                • Download all results as a ZIP file<br/><br/>
+                                Click "Batch Operations" button to create and manage batches.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Templates -->
+                    <MudExpansionPanel Text="Templates - Save Your Settings">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Reusable workflows:</strong><br/>
+                                • Save frequently used settings as templates<br/>
+                                • Pre-configured templates: Standard Merge, High Quality Print, Web Optimized<br/>
+                                • Mark favorites for quick access<br/>
+                                • Share templates by exporting as JSON<br/><br/>
+                                Click "Templates" to manage your saved workflows.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <!-- Camera Scanner -->
+                    <MudExpansionPanel Text="Camera Document Scanner">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Scan documents with your device camera:</strong><br/>
+                                • Click "Scan Document" in the toolbar<br/>
+                                • Grant camera access when prompted<br/>
+                                • Take a photo of your document<br/>
+                                • Automatically converts to PDF<br/><br/>
+                                <strong>Tip:</strong> Use good lighting and hold camera steady for best results.
+                            </MudText>
+                        </MudStack>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+
+                <!-- Advanced Features -->
+                <MudText Typo="Typo.h6" Style="font-weight: 600; margin-top: 16px;">Advanced Features</MudText>
+
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2">
+                            <strong>Web Workers (Performance):</strong><br/>
+                            Enable for faster processing of large files. Go to Performance Settings to toggle.<br/><br/>
+
+                            <strong>Keyboard Shortcuts:</strong><br/>
+                            • Ctrl+O: Add files<br/>
+                            • Ctrl+M: Merge PDFs<br/>
+                            • Ctrl+S: Save/Download<br/>
+                            • Delete: Remove selected file<br/><br/>
+
+                            <strong>Touch Gestures (Mobile):</strong><br/>
+                            • Swipe left/right: Navigate previews<br/>
+                            • Pinch to zoom: Preview images<br/>
+                            • Long press: Show options<br/><br/>
+
+                            <strong>Offline Mode:</strong><br/>
+                            Install as PWA (click install prompt) to use completely offline. All files and processing happen locally.<br/><br/>
+
+                            <strong>Recent Files:</strong><br/>
+                            Access your recent work quickly - file metadata stored locally for privacy.
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <!-- Privacy & Security -->
+                <MudPaper Elevation="2" Class="pa-4" Style="background-color: var(--mud-palette-success-lighten); margin-top: 16px;">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Success" Class="mr-1" />
+                            Privacy & Security
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            ✓ <strong>100% Client-Side Processing:</strong> All operations happen in your browser<br/>
+                            ✓ <strong>No File Uploads:</strong> Your files never leave your device<br/>
+                            ✓ <strong>No Server Storage:</strong> Nothing is saved on external servers<br/>
+                            ✓ <strong>No Tracking:</strong> Your documents and data remain completely private<br/>
+                            ✓ <strong>Open Source:</strong> Transparent code you can review<br/>
+                            ✓ <strong>Works Offline:</strong> No internet required after initial load
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <!-- Support & Feedback -->
+                <MudPaper Elevation="2" Class="pa-4" Style="margin-top: 16px;">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Class="mr-1" />
+                            Support This Project
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            Stitch PDF is free and open source. If you find it useful, consider supporting development:
+                        </MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.Coffee"
+                                   Href="https://buymeacoffee.com/rahmatsaeedi"
+                                   Target="_blank"
+                                   Style="max-width: 300px;">
+                            Buy Me a Coffee ☕
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudStack>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary" Variant="Variant.Filled">Got It!</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private void Close()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

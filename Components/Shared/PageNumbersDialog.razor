@@ -1,0 +1,209 @@
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Models
+@inject IAdvancedPdfService AdvancedPdfService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (!_isProcessing && string.IsNullOrEmpty(_resultMessage))
+            {
+                <MudText Typo="Typo.h6">Add Page Numbers to PDF</MudText>
+
+                @if (Files.Count > 1)
+                {
+                    <MudSelect @bind-Value="_selectedFile" Label="Select PDF File" Variant="Variant.Outlined">
+                        @foreach (var file in Files)
+                        {
+                            <MudSelectItem Value="@file">@file.Name (@file.PageCount pages)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (Files.Count == 1)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <strong>File:</strong> @Files[0].Name (@Files[0].PageCount pages)
+                    </MudAlert>
+                }
+
+                <MudSelect @bind-Value="_position" Label="Position" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("bottom-center")">Bottom Center</MudSelectItem>
+                    <MudSelectItem Value="@("bottom-right")">Bottom Right</MudSelectItem>
+                    <MudSelectItem Value="@("bottom-left")">Bottom Left</MudSelectItem>
+                    <MudSelectItem Value="@("top-center")">Top Center</MudSelectItem>
+                    <MudSelectItem Value="@("top-right")">Top Right</MudSelectItem>
+                    <MudSelectItem Value="@("top-left")">Top Left</MudSelectItem>
+                </MudSelect>
+
+                <MudSelect @bind-Value="_format" Label="Format" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("{page}")">Page number only (1, 2, 3...)</MudSelectItem>
+                    <MudSelectItem Value="@("Page {page}")">Page N (Page 1, Page 2...)</MudSelectItem>
+                    <MudSelectItem Value="@("{page} of {total}")">Page N of Total (1 of 10, 2 of 10...)</MudSelectItem>
+                    <MudSelectItem Value="@("Page {page} of {total}")">Page N of Total (Page 1 of 10...)</MudSelectItem>
+                    <MudSelectItem Value="@("{page}/{total}")">N/Total (1/10, 2/10...)</MudSelectItem>
+                </MudSelect>
+
+                <MudNumericField @bind-Value="_fontSize"
+                                 Label="Font Size"
+                                 Variant="Variant.Outlined"
+                                 Min="6"
+                                 Max="24"
+                                 Step="1" />
+
+                <MudNumericField @bind-Value="_startPage"
+                                 Label="Start Page Number"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Max="@(_selectedFile?.PageCount ?? 1000)"
+                                 Step="1"
+                                 HelperText="The first page will be numbered with this value" />
+
+                <MudColorPicker @bind-Value="_textColor"
+                                Label="Text Color"
+                                Variant="Variant.Outlined"
+                                ColorPickerView="ColorPickerView.Palette" />
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudText Typo="Typo.caption">
+                        Page numbers will be added to all pages. Preview: @GetPreviewText()
+                    </MudText>
+                </MudAlert>
+
+                <MudPaper Elevation="2" Class="pa-3" Style="background-color: #f5f5f5;">
+                    <MudText Typo="Typo.body2" Align="Align.Center" Style="@($"font-size: {_fontSize}px;")">
+                        @GetPreviewText()
+                    </MudText>
+                    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
+                        Preview (Position: @_position)
+                    </MudText>
+                </MudPaper>
+            }
+
+            @if (_isProcessing)
+            {
+                <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                    <MudText Typo="Typo.h6">Adding page numbers...</MudText>
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_resultMessage))
+            {
+                <MudAlert Severity="Severity.Success">
+                    @_resultMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@(string.IsNullOrEmpty(_resultMessage) ? "Cancel" : "Close")</MudButton>
+        @if (string.IsNullOrEmpty(_resultMessage) && !_isProcessing)
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="AddPageNumbers"
+                       Disabled="@(_selectedFile == null)">
+                Add Page Numbers
+            </MudButton>
+        }
+        @if (!string.IsNullOrEmpty(_resultMessage))
+        {
+            <MudButton Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       OnClick="StartNew">
+                Process Another PDF
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<FileItem> Files { get; set; } = new();
+
+    private FileItem? _selectedFile;
+    private string _position = "bottom-center";
+    private string _format = "{page} of {total}";
+    private int _fontSize = 10;
+    private int _startPage = 1;
+    private MudBlazor.Utilities.MudColor _textColor = new MudBlazor.Utilities.MudColor("#000000");
+    private bool _isProcessing;
+    private string _resultMessage = "";
+    private string _errorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        _selectedFile = Files.FirstOrDefault();
+    }
+
+    private string GetPreviewText()
+    {
+        if (_selectedFile == null) return "1 of 10";
+
+        var preview = _format
+            .Replace("{page}", _startPage.ToString())
+            .Replace("{total}", _selectedFile.PageCount.ToString());
+
+        return preview;
+    }
+
+    private async Task AddPageNumbers()
+    {
+        if (_selectedFile == null) return;
+
+        _isProcessing = true;
+        _errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            var options = new PageNumberOptions
+            {
+                FontSize = _fontSize,
+                Position = _position,
+                Format = _format,
+                StartPage = _startPage,
+                Color = "#000000" // Convert MudColor to hex if needed
+            };
+
+            var result = await AdvancedPdfService.AddPageNumbersAsync(_selectedFile.Data, options);
+
+            if (result != null)
+            {
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                _errorMessage = "Failed to add page numbers to PDF";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Page numbers error: {ex}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void StartNew()
+    {
+        _resultMessage = "";
+        _errorMessage = "";
+        StateHasChanged();
+    }
+
+    private void Close() => MudDialog.Cancel();
+
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+}

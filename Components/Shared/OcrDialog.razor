@@ -1,0 +1,443 @@
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Models
+@inject IOcrService OcrService
+
+<style>
+    .ocr-dialog-content {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    @@media (max-width: 768px) {
+        .ocr-dialog-content {
+            max-height: 70vh;
+        }
+
+        .mud-dialog {
+            margin: 8px !important;
+        }
+
+        .mud-dialog-content {
+            padding: 12px !important;
+        }
+    }
+
+    .mud-select-input {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mud-popover {
+        max-height: 400px !important;
+    }
+</style>
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Class="ocr-dialog-content">
+            @if (!_isProcessing && string.IsNullOrEmpty(_extractedText))
+            {
+                <MudText Typo="Typo.h6">Extract Text with OCR</MudText>
+
+                @if (Files.Count > 1)
+                {
+                    <MudSelect @bind-Value="_selectedFile" Label="Select File" Variant="Variant.Outlined">
+                        @foreach (var file in Files)
+                        {
+                            <MudSelectItem Value="@file">@file.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (Files.Count == 1)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <strong>File:</strong> @Files[0].Name
+                    </MudAlert>
+                }
+
+                <MudSelect @bind-Value="_selectedLanguage"
+                           Label="Language"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           MaxHeight="400">
+                    @foreach (var lang in _availableLanguages)
+                    {
+                        <MudSelectItem Value="@lang.Code">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.2em;">@lang.Flag</span>
+                                <span style="font-weight: 500;">@lang.NativeName</span>
+                                @if (!string.IsNullOrEmpty(lang.EnglishName) && lang.NativeName != lang.EnglishName)
+                                {
+                                    <span style="color: #888; font-size: 0.85em;">(@lang.EnglishName)</span>
+                                }
+                            </div>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudText Typo="Typo.caption">
+                        OCR will extract text from the selected @(IsImage(_selectedFile) ? "image" : "PDF").
+                        First-time language download may take a few seconds.
+                    </MudText>
+                </MudAlert>
+            }
+
+            @if (_isProcessing)
+            {
+                <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                    <MudText Typo="Typo.h6">Processing OCR...</MudText>
+                    @if (_progress > 0)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Value="@_progress" Size="Size.Medium" Class="rounded" />
+                        <MudText Typo="Typo.body2">@_progress% complete</MudText>
+                    }
+                    @if (!string.IsNullOrEmpty(_statusMessage))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@_statusMessage</MudText>
+                    }
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_extractedText))
+            {
+                <MudStack Spacing="2">
+                    <div class="d-flex justify-space-between align-center">
+                        <MudText Typo="Typo.h6">Extracted Text</MudText>
+                        <MudButton StartIcon="@Icons.Material.Filled.ContentCopy"
+                                   OnClick="CopyToClipboard"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Color="Color.Primary">
+                            Copy
+                        </MudButton>
+                    </div>
+
+                    @if (_confidence > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@GetConfidenceColor(_confidence)">
+                            Confidence: @_confidence.ToString("F1")%
+                        </MudChip>
+                    }
+
+                    <MudPaper Elevation="0" Class="pa-4" Style="background-color: #f5f5f5; max-height: 400px; overflow-y: auto;">
+                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace;">@_extractedText</MudText>
+                    </MudPaper>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @_wordCount words extracted
+                    </MudText>
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@(string.IsNullOrEmpty(_extractedText) ? "Cancel" : "Close")</MudButton>
+        @if (string.IsNullOrEmpty(_extractedText) && !_isProcessing)
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="PerformOCR"
+                       Disabled="@(_selectedFile == null)">
+                Extract Text
+            </MudButton>
+        }
+        @if (!string.IsNullOrEmpty(_extractedText))
+        {
+            <MudButton Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       OnClick="StartNew">
+                Extract Another
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<FileItem> Files { get; set; } = new();
+
+    private FileItem? _selectedFile;
+    private string _selectedLanguage = "eng";
+    private bool _isProcessing;
+    private int _progress;
+    private string _statusMessage = "";
+    private string _extractedText = "";
+    private string _errorMessage = "";
+    private float _confidence;
+    private int _wordCount;
+
+    private record OcrLanguage(string Code, string Flag, string NativeName, string EnglishName = "");
+
+    private readonly List<OcrLanguage> _availableLanguages = new()
+    {
+        // Top 30 by internet users
+        new("eng", "🇬🇧", "English"),
+        new("chi_sim", "🇨🇳", "中文（简体）", "Chinese (Simplified)"),
+        new("chi_tra", "🇹🇼", "中文（繁體）", "Chinese (Traditional)"),
+        new("spa", "🇪🇸", "Español", "Spanish"),
+        new("ara", "🇸🇦", "العربية", "Arabic"),
+        new("por", "🇵🇹", "Português", "Portuguese"),
+        new("ind", "🇮🇩", "Bahasa Indonesia", "Indonesian"),
+        new("fra", "🇫🇷", "Français", "French"),
+        new("jpn", "🇯🇵", "日本語", "Japanese"),
+        new("rus", "🇷🇺", "Русский", "Russian"),
+        new("deu", "🇩🇪", "Deutsch", "German"),
+        new("hin", "🇮🇳", "हिन्दी", "Hindi"),
+        new("ben", "🇧🇩", "বাংলা", "Bengali"),
+        new("kor", "🇰🇷", "한국어", "Korean"),
+        new("vie", "🇻🇳", "Tiếng Việt", "Vietnamese"),
+        new("tur", "🇹🇷", "Türkçe", "Turkish"),
+        new("ita", "🇮🇹", "Italiano", "Italian"),
+        new("tha", "🇹🇭", "ภาษาไทย", "Thai"),
+        new("pol", "🇵🇱", "Polski", "Polish"),
+        new("nld", "🇳🇱", "Nederlands", "Dutch"),
+        new("ukr", "🇺🇦", "Українська", "Ukrainian"),
+        new("fas", "🇮🇷", "فارسی", "Persian"),
+        new("tgl", "🇵🇭", "Tagalog", "Filipino"),
+        new("ron", "🇷🇴", "Română", "Romanian"),
+        new("ell", "🇬🇷", "Ελληνικά", "Greek"),
+        new("heb", "🇮🇱", "עברית", "Hebrew"),
+        new("ces", "🇨🇿", "Čeština", "Czech"),
+        new("swe", "🇸🇪", "Svenska", "Swedish"),
+        new("hun", "🇭🇺", "Magyar", "Hungarian"),
+        new("msa", "🇲🇾", "Bahasa Melayu", "Malay"),
+
+        // Rest alphabetically
+        new("afr", "🇿🇦", "Afrikaans"),
+        new("amh", "🇪🇹", "አማርኛ", "Amharic"),
+        new("asm", "🇮🇳", "অসমীয়া", "Assamese"),
+        new("aze", "🇦🇿", "Azərbaycanca", "Azerbaijani"),
+        new("bel", "🇧🇾", "Беларуская", "Belarusian"),
+        new("bod", "🏔️", "བོད་ཡིག", "Tibetan"),
+        new("bos", "🇧🇦", "Bosanski", "Bosnian"),
+        new("bre", "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "Brezhoneg", "Breton"),
+        new("bul", "🇧🇬", "Български", "Bulgarian"),
+        new("cat", "🏴󠁥󠁳󠁣󠁴󠁿", "Català", "Catalan"),
+        new("ceb", "🇵🇭", "Cebuano"),
+        new("dan", "🇩🇰", "Dansk", "Danish"),
+        new("dzo", "🇧🇹", "རྫོང་ཁ", "Dzongkha"),
+        new("epo", "🌍", "Esperanto"),
+        new("est", "🇪🇪", "Eesti", "Estonian"),
+        new("eus", "🏴󠁥󠁳󠁰󠁶󠁿", "Euskara", "Basque"),
+        new("fin", "🇫🇮", "Suomi", "Finnish"),
+        new("fry", "🇳🇱", "Frysk", "Frisian"),
+        new("gla", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "Gàidhlig", "Scottish Gaelic"),
+        new("gle", "🇮🇪", "Gaeilge", "Irish"),
+        new("glg", "🏴󠁥󠁳󠁧󠁡󠁿", "Galego", "Galician"),
+        new("guj", "🇮🇳", "ગુજરાતી", "Gujarati"),
+        new("hau", "🇳🇬", "Hausa"),
+        new("hrv", "🇭🇷", "Hrvatski", "Croatian"),
+        new("hye", "🇦🇲", "Հայերեն", "Armenian"),
+        new("ibo", "🇳🇬", "Igbo"),
+        new("isl", "🇮🇸", "Íslenska", "Icelandic"),
+        new("jav", "🇮🇩", "ꦧꦱꦗꦮ", "Javanese"),
+        new("kan", "🇮🇳", "ಕನ್ನಡ", "Kannada"),
+        new("kas", "🇮🇳", "कॉशुर", "Kashmiri"),
+        new("kat", "🇬🇪", "ქართული", "Georgian"),
+        new("kaz", "🇰🇿", "Қазақша", "Kazakh"),
+        new("khm", "🇰🇭", "ភាសាខ្មែរ", "Khmer"),
+        new("kir", "🇰🇬", "Кыргызча", "Kyrgyz"),
+        new("kok", "🇮🇳", "कोंकणी", "Konkani"),
+        new("kur", "🏴", "کوردی", "Kurdish"),
+        new("lao", "🇱🇦", "ລາວ", "Lao"),
+        new("lat", "🏛️", "Latina", "Latin"),
+        new("lav", "🇱🇻", "Latviešu", "Latvian"),
+        new("lit", "🇱🇹", "Lietuvių", "Lithuanian"),
+        new("mal", "🇮🇳", "മലയാളം", "Malayalam"),
+        new("mar", "🇮🇳", "मराठी", "Marathi"),
+        new("mkd", "🇲🇰", "Македонски", "Macedonian"),
+        new("mlt", "🇲🇹", "Malti", "Maltese"),
+        new("mni", "🇮🇳", "মৈতৈলোন", "Manipuri"),
+        new("mon", "🇲🇳", "Монгол", "Mongolian"),
+        new("mya", "🇲🇲", "မြန်မာ", "Burmese"),
+        new("nep", "🇳🇵", "नेपाली", "Nepali"),
+        new("nor", "🇳🇴", "Norsk", "Norwegian"),
+        new("oci", "🏴󠁥󠁳󠁣󠁴󠁿", "Occitan"),
+        new("ori", "🇮🇳", "ଓଡ଼ିଆ", "Oriya"),
+        new("orm", "🇪🇹", "Oromoo", "Oromo"),
+        new("pan", "🇮🇳", "ਪੰਜਾਬੀ", "Punjabi"),
+        new("pus", "🇦🇫", "پښتو", "Pashto"),
+        new("san", "🇮🇳", "संस्कृतम्", "Sanskrit"),
+        new("sat", "🇮🇳", "ᱥᱟᱱᱛᱟᱲᱤ", "Santali"),
+        new("sin", "🇱🇰", "සිංහල", "Sinhala"),
+        new("slk", "🇸🇰", "Slovenčina", "Slovak"),
+        new("slv", "🇸🇮", "Slovenščina", "Slovenian"),
+        new("snd", "🇵🇰", "سنڌي", "Sindhi"),
+        new("som", "🇸🇴", "Soomaali", "Somali"),
+        new("sqi", "🇦🇱", "Shqip", "Albanian"),
+        new("srp", "🇷🇸", "Српски", "Serbian"),
+        new("sun", "🇮🇩", "Basa Sunda", "Sundanese"),
+        new("swa", "🇰🇪", "Kiswahili", "Swahili"),
+        new("syr", "🏴", "ܣܘܪܝܝܐ", "Syriac"),
+        new("tam", "🇮🇳", "தமிழ்", "Tamil"),
+        new("tel", "🇮🇳", "తెలుగు", "Telugu"),
+        new("tgk", "🇹🇯", "Тоҷикӣ", "Tajik"),
+        new("tir", "🇪🇷", "ትግርኛ", "Tigrinya"),
+        new("tuk", "🇹🇲", "Түркмен", "Turkmen"),
+        new("uig", "🇨🇳", "ئۇيغۇرچە", "Uyghur"),
+        new("urd", "🇵🇰", "اردو", "Urdu"),
+        new("uzb", "🇺🇿", "Oʻzbekcha", "Uzbek"),
+        new("xho", "🇿🇦", "isiXhosa", "Xhosa"),
+        new("yid", "🕍", "ייִדיש", "Yiddish"),
+        new("yor", "🇳🇬", "Yorùbá", "Yoruba"),
+        new("zul", "🇿🇦", "isiZulu", "Zulu"),
+        new("cym", "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "Cymraeg", "Welsh")
+    };
+
+    protected override void OnInitialized()
+    {
+        _selectedFile = Files.FirstOrDefault();
+    }
+
+    private bool IsImage(FileItem? file)
+    {
+        if (file == null) return false;
+        return file.ContentType.StartsWith("image/");
+    }
+
+    private async Task PerformOCR()
+    {
+        if (_selectedFile == null) return;
+
+        _isProcessing = true;
+        _progress = 0;
+        _statusMessage = "Initializing OCR engine...";
+        _errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            // Initialize OCR
+            _statusMessage = "Downloading OCR language files (first time only)...";
+            StateHasChanged();
+
+            try
+            {
+                var initialized = await OcrService.InitializeAsync(_selectedLanguage);
+                if (!initialized)
+                {
+                    _errorMessage = "Failed to initialize OCR engine. Please check your internet connection and try again.";
+                    return;
+                }
+            }
+            catch (Exception initEx)
+            {
+                _errorMessage = $"OCR Initialization Error: {initEx.Message}";
+                Console.WriteLine($"OCR Init Exception: {initEx}");
+                return;
+            }
+
+            if (_selectedFile.ContentType == "application/pdf")
+            {
+                _statusMessage = "Processing PDF pages...";
+                StateHasChanged();
+
+                var progress = new Progress<PdfOcrProgress>(p =>
+                {
+                    _progress = p.Percentage;
+                    _statusMessage = $"Processing page {p.CurrentPage} of {p.TotalPages}...";
+                    InvokeAsync(StateHasChanged);
+                });
+
+                var result = await OcrService.PerformOcrOnPdfAsync(_selectedFile.Data, _selectedLanguage, progress);
+
+                if (result?.Success == true && result.Pages.Any())
+                {
+                    // Combine all pages
+                    _extractedText = string.Join("\n\n--- Page Break ---\n\n",
+                        result.Pages.Select(p => $"[Page {p.PageNumber}]\n{p.Text}"));
+                    _confidence = result.Pages.Average(p => p.Confidence);
+                    _wordCount = _extractedText.Split(new[] { ' ', '\n', '\r', '\t' },
+                        StringSplitOptions.RemoveEmptyEntries).Length;
+                }
+                else
+                {
+                    _errorMessage = result?.Error ?? "Failed to extract text from PDF";
+                }
+            }
+            else
+            {
+                // Process image
+                _statusMessage = "Extracting text from image...";
+                StateHasChanged();
+
+                var progress = new Progress<int>(p =>
+                {
+                    _progress = p;
+                    InvokeAsync(StateHasChanged);
+                });
+
+                var result = await OcrService.PerformOcrAsync(_selectedFile.Data, _selectedLanguage, progress);
+
+                if (result != null && !string.IsNullOrEmpty(result.Text))
+                {
+                    _extractedText = result.Text;
+                    _confidence = result.Confidence;
+                    _wordCount = _extractedText.Split(new[] { ' ', '\n', '\r', '\t' },
+                        StringSplitOptions.RemoveEmptyEntries).Length;
+                }
+                else
+                {
+                    _errorMessage = result?.Error ?? "No text found in image";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"OCR Error: {ex.Message}";
+            Console.WriteLine($"OCR Error: {ex}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            _progress = 0;
+            _statusMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            // Note: Clipboard API requires HTTPS or localhost
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _extractedText);
+            Snackbar.Add("✅ Text copied to clipboard!", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("⚠️ Copy failed. Select and copy text manually.", Severity.Warning);
+        }
+    }
+
+    private Color GetConfidenceColor(float confidence)
+    {
+        if (confidence >= 80) return Color.Success;
+        if (confidence >= 60) return Color.Warning;
+        return Color.Error;
+    }
+
+    private void StartNew()
+    {
+        _extractedText = "";
+        _errorMessage = "";
+        _confidence = 0;
+        _wordCount = 0;
+        StateHasChanged();
+    }
+
+    private void Close() => MudDialog.Cancel();
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+}

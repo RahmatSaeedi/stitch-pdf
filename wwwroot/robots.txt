@@ -1,0 +1,13 @@
+# robots.txt for Stitch PDF Converter & Merger
+# https://rahmatsaeedi.github.io/stitch-pdf/
+
+User-agent: *
+Allow: /
+
+# Disallow unnecessary paths
+Disallow: /lib/
+Disallow: /_framework/
+Disallow: /_content/
+
+# Sitemap
+Sitemap: https://rahmatsaeedi.github.io/stitch-pdf/sitemap.xml

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+
+    <!-- Primary Meta Tags -->
+    <title>Stitch PDF Converter & Merger - Free Online PDF Tools | Merge, Convert, Sign PDFs</title>
+    <meta name="title" content="Stitch PDF Converter & Merger - Free Online PDF Tools | Merge, Convert, Sign PDFs" />
+    <meta name="description" content="Free online PDF toolkit: merge PDFs, convert DOCX/images to PDF, compress files, add digital signatures, watermarks, QR codes, OCR in 110+ languages. 100% client-side processing - your files never leave your device. Works offline as PWA." />
+    <meta name="keywords" content="PDF merger, PDF converter, merge PDF, convert to PDF, DOCX to PDF, image to PDF, compress PDF, PDF signature, digital signature, watermark PDF, QR code generator, barcode generator, OCR PDF, PDF tools, free PDF, online PDF, offline PDF, PWA PDF, batch PDF processing, split PDF, password protect PDF, PDF editor" />
+    <meta name="author" content="Rahmat Saeedi" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://rahmatsaeedi.github.io/stitch-pdf/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rahmatsaeedi.github.io/stitch-pdf/" />
+    <meta property="og:title" content="Stitch PDF Converter & Merger - Free Online PDF Tools" />
+    <meta property="og:description" content="Merge, convert, compress, sign PDFs with 100% client-side processing. OCR in 110+ languages, batch operations, works offline. No uploads - your privacy is protected." />
+    <meta property="og:image" content="https://rahmatsaeedi.github.io/stitch-pdf/social-preview.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Stitch PDF" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://rahmatsaeedi.github.io/stitch-pdf/" />
+    <meta name="twitter:title" content="Stitch PDF Converter & Merger - Free Online PDF Tools" />
+    <meta name="twitter:description" content="Merge, convert, compress, sign PDFs with 100% client-side processing. OCR in 110+ languages, batch operations, works offline." />
+    <meta name="twitter:image" content="https://rahmatsaeedi.github.io/stitch-pdf/social-preview.jpg" />
+    <meta name="twitter:creator" content="@rahmatsaeedi" />
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1976d2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Stitch PDF" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Stitch PDF" />
+
+    <base href="/stitch-pdf/" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json" />
+
+    <!-- Favicons and App Icons -->
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+
+    <link href="_framework/dotnet.iezi8ezmes.js" rel="preload" as="script" fetchpriority="high" crossorigin="anonymous" integrity="sha256-ujNmzMGWjyEYTDdjQBoP8nYv+jBQ37OvQhAS+TZCvHY=" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/app.css" />
+    <!-- If you add any scoped CSS files, uncomment the following to load them
+    <link href="PdfMerger.Client.styles.css" rel="stylesheet" /> -->
+    <script type="importmap">{
+  "imports": {
+    "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js": "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.99zm1jdh75.lib.module.js",
+    "./_content/MudBlazor/MudBlazor.min.js": "./_content/MudBlazor/MudBlazor.min.f96y5mhlyw.js",
+    "./_framework/blazor.webassembly.js": "./_framework/blazor.webassembly.66stpp682q.js",
+    "./_framework/dotnet.js": "./_framework/dotnet.iezi8ezmes.js",
+    "./_framework/dotnet.native.js": "./_framework/dotnet.native.cs8mcre4gh.js",
+    "./_framework/dotnet.runtime.js": "./_framework/dotnet.runtime.0j6ezsi0n0.js",
+    "./js/camera.js": "./js/camera.3s8370swr8.js",
+    "./js/fileUpload.js": "./js/fileUpload.3p3svy6xcj.js",
+    "./js/keyboard.js": "./js/keyboard.scd3a7jy6n.js",
+    "./js/keyboardShortcuts.js": "./js/keyboardShortcuts.ikam5urk2p.js",
+    "./js/networkStatus.js": "./js/networkStatus.0bnok0ss15.js",
+    "./js/ocrInterop.js": "./js/ocrInterop.ejwa1hui12.js",
+    "./js/pdfAdvancedInterop.js": "./js/pdfAdvancedInterop.5vdjfzqqra.js",
+    "./js/pdfInterop.js": "./js/pdfInterop.4ygi0ryl4g.js",
+    "./js/pdfWorker.js": "./js/pdfWorker.jn559sdpz6.js",
+    "./js/pwa.js": "./js/pwa.51e43g2jxt.js",
+    "./js/qrBarcodeInterop.js": "./js/qrBarcodeInterop.vhfvnwcqhn.js",
+    "./js/signatureInterop.js": "./js/signatureInterop.lsegv5yah5.js",
+    "./js/sortable.js": "./js/sortable.q5abhhzeum.js",
+    "./js/touchGestures.js": "./js/touchGestures.zks4avlpk8.js",
+    "./js/webWorkerBridge.js": "./js/webWorkerBridge.c7ml51k4u9.js",
+    "./lib/Sortable.min.js": "./lib/Sortable.min.ivik9k4c2w.js",
+    "./lib/UTIF.js": "./lib/UTIF.99dc26bexp.js",
+    "./lib/heic2any.min.js": "./lib/heic2any.min.tn7d7dkwvx.js",
+    "./lib/html2canvas.min.js": "./lib/html2canvas.min.oc6fdp8cc1.js",
+    "./lib/jsbarcode.all.min.js": "./lib/jsbarcode.all.min.ikzxugllo0.js",
+    "./lib/jszip.min.js": "./lib/jszip.min.su86i19dm2.js",
+    "./lib/mammoth.browser.min.js": "./lib/mammoth.browser.min.zpkjqeh5i5.js",
+    "./lib/marked.min.js": "./lib/marked.min.30ne3rufdo.js",
+    "./lib/papaparse.min.js": "./lib/papaparse.min.8g4zuin93e.js",
+    "./lib/pdf-lib.min.js": "./lib/pdf-lib.min.fwcjist3ow.js",
+    "./lib/pdf.min.js": "./lib/pdf.min.roegpke95o.js",
+    "./lib/pdf.worker.min.js": "./lib/pdf.worker.min.a2jq9i8bm3.js",
+    "./lib/qrcode-temp.js": "./lib/qrcode-temp.afvspu1rmi.js",
+    "./lib/qrcode.min.js": "./lib/qrcode.min.h5gslb8p3n.js",
+    "./lib/signature_pad.umd.min.js": "./lib/signature_pad.umd.min.bdmr9hdjad.js",
+    "./lib/tesseract.min.js": "./lib/tesseract.min.0m16lwivib.js",
+    "./lib/xlsx.full.min.js": "./lib/xlsx.full.min.hmub9uw09q.js",
+    "./service-worker.js": "./service-worker.tc09yisco9.js"
+  },
+  "scopes": {},
+  "integrity": {
+    "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.99zm1jdh75.lib.module.js": "sha256-A8e6zZwhOqf7lDQqbbCYcAUv4wGE9aQxOo4WyYxR//0=",
+    "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js": "sha256-A8e6zZwhOqf7lDQqbbCYcAUv4wGE9aQxOo4WyYxR//0=",
+    "./_content/MudBlazor/MudBlazor.min.f96y5mhlyw.js": "sha256-zR6goaoMpR/YVMMSTfCmVNo3kuPgOkjF/ovhkUhAkbk=",
+    "./_content/MudBlazor/MudBlazor.min.js": "sha256-zR6goaoMpR/YVMMSTfCmVNo3kuPgOkjF/ovhkUhAkbk=",
+    "./_framework/blazor.webassembly.66stpp682q.js": "sha256-3lCWrko3zwspV40aQhs2S/IMkRSarnHRKIdkHhuXIBA=",
+    "./_framework/blazor.webassembly.js": "sha256-3lCWrko3zwspV40aQhs2S/IMkRSarnHRKIdkHhuXIBA=",
+    "./_framework/dotnet.iezi8ezmes.js": "sha256-ujNmzMGWjyEYTDdjQBoP8nYv+jBQ37OvQhAS+TZCvHY=",
+    "./_framework/dotnet.js": "sha256-ujNmzMGWjyEYTDdjQBoP8nYv+jBQ37OvQhAS+TZCvHY=",
+    "./_framework/dotnet.native.cs8mcre4gh.js": "sha256-/I3SDHIle7heAxlUGBrgxax+lkKyWyRLBVEJmTHJSCs=",
+    "./_framework/dotnet.native.js": "sha256-/I3SDHIle7heAxlUGBrgxax+lkKyWyRLBVEJmTHJSCs=",
+    "./_framework/dotnet.runtime.0j6ezsi0n0.js": "sha256-jCsbbdXoVd1zzGc0fQT2sz4mKuv0ANdurPVGo5Sc2jg=",
+    "./_framework/dotnet.runtime.js": "sha256-jCsbbdXoVd1zzGc0fQT2sz4mKuv0ANdurPVGo5Sc2jg=",
+    "./js/camera.3s8370swr8.js": "sha256-M3buCnbfQKUGdqGO0uk7j3X9kK9XayiMe4d8rUx2IK8=",
+    "./js/camera.js": "sha256-M3buCnbfQKUGdqGO0uk7j3X9kK9XayiMe4d8rUx2IK8=",
+    "./js/fileUpload.3p3svy6xcj.js": "sha256-SRfvCqWffBiZsOL+cDLArmMzqkisleBCO78P9sGJisg=",
+    "./js/fileUpload.js": "sha256-SRfvCqWffBiZsOL+cDLArmMzqkisleBCO78P9sGJisg=",
+    "./js/keyboard.js": "sha256-pCMeJgTeX4Px1YSWSRqEf9y7GmUupnMkOndKdDKTwA0=",
+    "./js/keyboard.scd3a7jy6n.js": "sha256-pCMeJgTeX4Px1YSWSRqEf9y7GmUupnMkOndKdDKTwA0=",
+    "./js/keyboardShortcuts.ikam5urk2p.js": "sha256-/hPHhlBZOYnrmBbXXlBpoei/Vo9ppY4qOMtJ/7AnN+o=",
+    "./js/keyboardShortcuts.js": "sha256-/hPHhlBZOYnrmBbXXlBpoei/Vo9ppY4qOMtJ/7AnN+o=",
+    "./js/networkStatus.0bnok0ss15.js": "sha256-/N8rozvZo5kINkGXyWVEDknrpTFAEYYvtVHcWsAPEP8=",
+    "./js/networkStatus.js": "sha256-/N8rozvZo5kINkGXyWVEDknrpTFAEYYvtVHcWsAPEP8=",
+    "./js/ocrInterop.ejwa1hui12.js": "sha256-OqjzQ51604F3C4xNgclFGK4SQj8mIbbVhHuJAiLHP6M=",
+    "./js/ocrInterop.js": "sha256-OqjzQ51604F3C4xNgclFGK4SQj8mIbbVhHuJAiLHP6M=",
+    "./js/pdfAdvancedInterop.5vdjfzqqra.js": "sha256-DzgQbZ9dpNeo2UuUeV8SIbzyCwyN2GIwQ7gNPciea18=",
+    "./js/pdfAdvancedInterop.js": "sha256-DzgQbZ9dpNeo2UuUeV8SIbzyCwyN2GIwQ7gNPciea18=",
+    "./js/pdfInterop.4ygi0ryl4g.js": "sha256-TNKbVZ+ogzF1sEKM2T3BuP5mwtTYlB7agsZfBinaoSE=",
+    "./js/pdfInterop.js": "sha256-TNKbVZ+ogzF1sEKM2T3BuP5mwtTYlB7agsZfBinaoSE=",
+    "./js/pdfWorker.jn559sdpz6.js": "sha256-31SHe6qn+MRQ449U+APwED6DPS7AfDoRjT1QcnehwtU=",
+    "./js/pdfWorker.js": "sha256-31SHe6qn+MRQ449U+APwED6DPS7AfDoRjT1QcnehwtU=",
+    "./js/pwa.51e43g2jxt.js": "sha256-CSNc0N5LT1NpRSktVDYN7Mh+PGGGqhimC5sBaoXubsQ=",
+    "./js/pwa.js": "sha256-CSNc0N5LT1NpRSktVDYN7Mh+PGGGqhimC5sBaoXubsQ=",
+    "./js/qrBarcodeInterop.js": "sha256-zWjjqnVt3irTJQTPvFl0DBUdrvaadQvHPjiW7KFFnjQ=",
+    "./js/qrBarcodeInterop.vhfvnwcqhn.js": "sha256-zWjjqnVt3irTJQTPvFl0DBUdrvaadQvHPjiW7KFFnjQ=",
+    "./js/signatureInterop.js": "sha256-5QHvztUUoJdK18Gvg0bwI4IknWp9RC/OEDBindXApDw=",
+    "./js/signatureInterop.lsegv5yah5.js": "sha256-5QHvztUUoJdK18Gvg0bwI4IknWp9RC/OEDBindXApDw=",
+    "./js/sortable.js": "sha256-Lk2tpS0Iii1VE3JzvYAJSYPlV68BIDmKNOfdnBPKn7k=",
+    "./js/sortable.q5abhhzeum.js": "sha256-Lk2tpS0Iii1VE3JzvYAJSYPlV68BIDmKNOfdnBPKn7k=",
+    "./js/touchGestures.js": "sha256-TeA9QS1+CuCI+uwDOd/nhSG5TZyYwJSK574Gc5/LUGQ=",
+    "./js/touchGestures.zks4avlpk8.js": "sha256-TeA9QS1+CuCI+uwDOd/nhSG5TZyYwJSK574Gc5/LUGQ=",
+    "./js/webWorkerBridge.c7ml51k4u9.js": "sha256-qGzyTSE/sZ4M37UpyP68ShugmgBhcioWWS6SrWltbGc=",
+    "./js/webWorkerBridge.js": "sha256-qGzyTSE/sZ4M37UpyP68ShugmgBhcioWWS6SrWltbGc=",
+    "./lib/Sortable.min.ivik9k4c2w.js": "sha256-cqosT598srizJoBS1tLaqdlS8gm3/FzCR/+eEVPbHxY=",
+    "./lib/Sortable.min.js": "sha256-cqosT598srizJoBS1tLaqdlS8gm3/FzCR/+eEVPbHxY=",
+    "./lib/UTIF.99dc26bexp.js": "sha256-4+dhFfSVceOWJMMxanazxMWyxcpRjf7EtmqfevjG0Fk=",
+    "./lib/UTIF.js": "sha256-4+dhFfSVceOWJMMxanazxMWyxcpRjf7EtmqfevjG0Fk=",
+    "./lib/heic2any.min.js": "sha256-CWPPpQ6eHn5q+SmkCoHj6Jimc/EnDq+mkX3RN+SWgWQ=",
+    "./lib/heic2any.min.tn7d7dkwvx.js": "sha256-CWPPpQ6eHn5q+SmkCoHj6Jimc/EnDq+mkX3RN+SWgWQ=",
+    "./lib/html2canvas.min.js": "sha256-6H5VB5QyLldKH9oMFUmjxw2uWpPZETQXpCkBaDjquMs=",
+    "./lib/html2canvas.min.oc6fdp8cc1.js": "sha256-6H5VB5QyLldKH9oMFUmjxw2uWpPZETQXpCkBaDjquMs=",
+    "./lib/jsbarcode.all.min.ikzxugllo0.js": "sha256-UuAyU0w/mJdq2Vy4wguvgO0MyD1CWQYCqM8dsW4uIu0=",
+    "./lib/jsbarcode.all.min.js": "sha256-UuAyU0w/mJdq2Vy4wguvgO0MyD1CWQYCqM8dsW4uIu0=",
+    "./lib/jszip.min.js": "sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=",
+    "./lib/jszip.min.su86i19dm2.js": "sha256-rMfkFFWoB2W1/Zx+4bgHim0WC7vKRVrq6FTeZclH1Z4=",
+    "./lib/mammoth.browser.min.js": "sha256-WW71IjnlLY7jzuELLuSnJZar+QDQ5PRoWT+Vbp8YCbA=",
+    "./lib/mammoth.browser.min.zpkjqeh5i5.js": "sha256-WW71IjnlLY7jzuELLuSnJZar+QDQ5PRoWT+Vbp8YCbA=",
+    "./lib/marked.min.30ne3rufdo.js": "sha256-8zoteDYr3gAWcOOimwH9DcFqf5GU0EKnda+JJwqzi3Q=",
+    "./lib/marked.min.js": "sha256-8zoteDYr3gAWcOOimwH9DcFqf5GU0EKnda+JJwqzi3Q=",
+    "./lib/papaparse.min.8g4zuin93e.js": "sha256-uOhwxdKyl3LxDJ+pppPIuJaqyFQO1nAePMYwTGg/69s=",
+    "./lib/papaparse.min.js": "sha256-uOhwxdKyl3LxDJ+pppPIuJaqyFQO1nAePMYwTGg/69s=",
+    "./lib/pdf-lib.min.fwcjist3ow.js": "sha256-D5pcrQeUHwgmWGyU4InYm5GMRuXBfPLVo8b2ZuO8aU8=",
+    "./lib/pdf-lib.min.js": "sha256-D5pcrQeUHwgmWGyU4InYm5GMRuXBfPLVo8b2ZuO8aU8=",
+    "./lib/pdf.min.js": "sha256-W1eZ5vjGgGYyB6xbQu4U7tKkBvp69I9QwVTwwLFWaUY=",
+    "./lib/pdf.min.roegpke95o.js": "sha256-W1eZ5vjGgGYyB6xbQu4U7tKkBvp69I9QwVTwwLFWaUY=",
+    "./lib/pdf.worker.min.a2jq9i8bm3.js": "sha256-/qvfMJdw7SS7oxpUZ4Ns3Iz2OccFryfVK1hbBBu4Uns=",
+    "./lib/pdf.worker.min.js": "sha256-/qvfMJdw7SS7oxpUZ4Ns3Iz2OccFryfVK1hbBBu4Uns=",
+    "./lib/qrcode-temp.afvspu1rmi.js": "sha256-Fk/Cwcnq8KA6qN/bhV6C5BpcaSL7rYuzI4EWIH4mvvc=",
+    "./lib/qrcode-temp.js": "sha256-Fk/Cwcnq8KA6qN/bhV6C5BpcaSL7rYuzI4EWIH4mvvc=",
+    "./lib/qrcode.min.h5gslb8p3n.js": "sha256-xUHvBjJ4hahBW8qN9gceFBibSFUzbe9PNttUvehITzY=",
+    "./lib/qrcode.min.js": "sha256-xUHvBjJ4hahBW8qN9gceFBibSFUzbe9PNttUvehITzY=",
+    "./lib/signature_pad.umd.min.bdmr9hdjad.js": "sha256-/8a/3YLn7UlBx9oXDxpq5L47fLEDb29g7bCWF6ho56Q=",
+    "./lib/signature_pad.umd.min.js": "sha256-/8a/3YLn7UlBx9oXDxpq5L47fLEDb29g7bCWF6ho56Q=",
+    "./lib/tesseract.min.0m16lwivib.js": "sha256-qOKZGNCYsrBuEBK9rv+0rsBEXF1WVHCQI+C9H0QqgOg=",
+    "./lib/tesseract.min.js": "sha256-qOKZGNCYsrBuEBK9rv+0rsBEXF1WVHCQI+C9H0QqgOg=",
+    "./lib/xlsx.full.min.hmub9uw09q.js": "sha256-yVBhl8r4CaB1tt7h2g02+xnacVj/6KiOewyWxdhiPJk=",
+    "./lib/xlsx.full.min.js": "sha256-yVBhl8r4CaB1tt7h2g02+xnacVj/6KiOewyWxdhiPJk=",
+    "./service-worker.js": "sha256-8+tF88kfn+qEscp53uUSt0FWgH82SmwsHUA3CykURkE=",
+    "./service-worker.tc09yisco9.js": "sha256-8+tF88kfn+qEscp53uUSt0FWgH82SmwsHUA3CykURkE="
+  }
+}</script>
+
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Stitch PDF Converter & Merger",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "PDF Tools",
+        "operatingSystem": "Web Browser, Windows, macOS, Linux, iOS, Android",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "description": "Free online PDF toolkit for merging, converting, compressing, and signing PDFs with 100% client-side processing. Features include OCR in 110+ languages, batch operations, QR/barcode generation, watermarks, and offline PWA support.",
+        "url": "https://rahmatsaeedi.github.io/stitch-pdf/",
+        "author": {
+            "@type": "Person",
+            "name": "Rahmat Saeedi",
+            "url": "https://buymeacoffee.com/rahmatsaeedi"
+        },
+        "screenshot": "https://rahmatsaeedi.github.io/stitch-pdf/social-preview.jpg",
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "5",
+            "ratingCount": "1"
+        },
+        "featureList": [
+            "Merge multiple PDF files",
+            "Convert DOCX, images to PDF",
+            "Compress PDF files",
+            "Add digital signatures",
+            "OCR text extraction (110+ languages)",
+            "Generate QR codes and barcodes",
+            "Add watermarks and page numbers",
+            "Password protect PDFs",
+            "Batch operations",
+            "100% client-side processing",
+            "Works offline as PWA",
+            "No file uploads required",
+            "Free and open source"
+        ]
+    }
+    </script>
+
+    <!-- Google Analytics (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7J0PWC5GCS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-7J0PWC5GCS');
+    </script>
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <!-- Existing libraries -->
+    <script src="lib/pdf-lib.min.js"></script>
+    <script src="lib/pdf.min.js"></script>
+    <script src="lib/heic2any.min.js"></script>
+    <script src="lib/jszip.min.js"></script>
+    <script src="lib/Sortable.min.js"></script>
+    <script src="lib/marked.min.js"></script>
+    <script src="lib/papaparse.min.js"></script>
+    <script src="lib/html2canvas.min.js"></script>
+    <script src="lib/UTIF.js"></script>
+    <script src="lib/mammoth.browser.min.js"></script>
+    <script src="lib/xlsx.full.min.js"></script>
+
+    <!-- New libraries for enhanced features (hosted locally for offline support) -->
+    <!-- Tesseract.js for OCR -->
+    <script src="lib/tesseract.min.js"></script>
+
+    <!-- Signature Pad for e-signatures -->
+    <script src="lib/signature_pad.umd.min.js"></script>
+
+    <!-- QR Code generation (JavaScript - better WASM compatibility) -->
+    <script src="lib/qrcode.min.js"></script>
+
+    <!-- Barcode generation (JavaScript - better WASM compatibility) -->
+    <script src="lib/jsbarcode.all.min.js"></script>
+
+    <!-- PDF.js worker -->
+    <script>
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+        }
+    </script>
+
+    <script src="_framework/blazor.webassembly.66stpp682q.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+</body>
+
+</html>

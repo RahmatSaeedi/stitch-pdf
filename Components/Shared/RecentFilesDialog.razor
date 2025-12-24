@@ -1,0 +1,149 @@
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Services.Utilities
+@using MudBlazor
+@inject IRecentFilesService RecentFilesService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h6">Recent Files</MudText>
+
+            @if (_isLoading)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="2" Style="padding: 40px;">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Loading recent files...</MudText>
+                </MudStack>
+            }
+            else if (!_recentFiles.Any())
+            {
+                <MudAlert Severity="Severity.Info">
+                    No recent files found. Process some files to see them appear here!
+                </MudAlert>
+            }
+            else
+            {
+                <MudPaper Elevation="0" Style="max-height: 400px; overflow-y: auto;">
+                    <MudList T="string" Clickable="false">
+                        @foreach (var file in _recentFiles)
+                        {
+                            <MudListItem T="string">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <MudStack Spacing="1" Style="flex: 1;">
+                                        <MudText Typo="Typo.body1" Style="font-weight: 500;">@file.FileName</MudText>
+                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Style="flex-wrap: wrap;">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                                @GetFileTypeDisplay(file.ContentType)
+                                            </MudChip>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @FileSizeFormatter.FormatBytes(file.FileSize)
+                                            </MudText>
+                                            @if (file.PageCount > 0)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @file.PageCount @(file.PageCount == 1 ? "page" : "pages")
+                                                </MudText>
+                                            }
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @GetRelativeTime(file.AccessedAt)
+                                            </MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => RemoveFile(file.FileName))"
+                                                   title="Remove from history" />
+                                </MudStack>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                    </MudList>
+                </MudPaper>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.ClearAll"
+                           OnClick="ClearHistory"
+                           FullWidth="true">
+                    Clear All History
+                </MudButton>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private List<RecentFileEntry> _recentFiles = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentFiles();
+    }
+
+    private async Task LoadRecentFiles()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        _recentFiles = await RecentFilesService.GetRecentFilesAsync();
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task RemoveFile(string fileName)
+    {
+        await RecentFilesService.RemoveRecentFileAsync(fileName);
+        await LoadRecentFiles();
+    }
+
+    private async Task ClearHistory()
+    {
+        await RecentFilesService.ClearHistoryAsync();
+        await LoadRecentFiles();
+    }
+
+    private string GetFileTypeDisplay(string contentType)
+    {
+        return contentType switch
+        {
+            "application/pdf" => "PDF",
+            var t when t.StartsWith("image/") => "Image",
+            var t when t.StartsWith("text/") => "Text",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => "DOCX",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "XLSX",
+            _ => "File"
+        };
+    }
+
+    private string GetRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+
+        return dateTime.ToLocalTime().ToString("MMM d, yyyy");
+    }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}

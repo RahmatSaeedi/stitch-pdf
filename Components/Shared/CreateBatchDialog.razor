@@ -1,0 +1,200 @@
+@using PdfMerger.Client.Models
+@using PdfMerger.Client.Services
+@inject IBatchOperationsService BatchService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h6">Create Batch Operation</MudText>
+
+            <MudTextField @bind-Value="_batchName"
+                          Label="Batch Name"
+                          Variant="Variant.Outlined"
+                          Placeholder="e.g., Compress All PDFs"
+                          Required="true" />
+
+            <MudSelect @bind-Value="_operationType"
+                       Label="Operation Type"
+                       Variant="Variant.Outlined"
+                       Required="true">
+                <MudSelectItem Value="@BatchOperationType.Compress">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Compress" Size="Size.Small" />
+                        <span>Compress PDFs</span>
+                    </MudStack>
+                </MudSelectItem>
+                <MudSelectItem Value="@BatchOperationType.Watermark">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Colorize" Size="Size.Small" />
+                        <span>Add Watermark</span>
+                    </MudStack>
+                </MudSelectItem>
+                <MudSelectItem Value="@BatchOperationType.AddPageNumbers">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Numbers" Size="Size.Small" />
+                        <span>Add Page Numbers</span>
+                    </MudStack>
+                </MudSelectItem>
+                <MudSelectItem Value="@BatchOperationType.PasswordProtect">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                        <span>Password Protect</span>
+                    </MudStack>
+                </MudSelectItem>
+            </MudSelect>
+
+            @if (_operationType == BatchOperationType.Compress)
+            {
+                <MudSelect @bind-Value="_compressionQuality"
+                           Label="Compression Quality"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("low")">Low (Smaller file, lower quality)</MudSelectItem>
+                    <MudSelectItem Value="@("medium")">Medium (Balanced)</MudSelectItem>
+                    <MudSelectItem Value="@("high")">High (Larger file, better quality)</MudSelectItem>
+                </MudSelect>
+            }
+            else if (_operationType == BatchOperationType.Watermark)
+            {
+                <MudTextField @bind-Value="_watermarkText"
+                              Label="Watermark Text"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+                <MudSlider @bind-Value="_watermarkOpacity"
+                           Min="0.1"
+                           Max="1.0"
+                           Step="0.1"
+                           Color="Color.Primary">
+                    Opacity: @_watermarkOpacity.ToString("F1")
+                </MudSlider>
+            }
+            else if (_operationType == BatchOperationType.AddPageNumbers)
+            {
+                <MudSelect @bind-Value="_pageNumberPosition"
+                           Label="Position"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("bottom-center")">Bottom Center</MudSelectItem>
+                    <MudSelectItem Value="@("bottom-left")">Bottom Left</MudSelectItem>
+                    <MudSelectItem Value="@("bottom-right")">Bottom Right</MudSelectItem>
+                    <MudSelectItem Value="@("top-center")">Top Center</MudSelectItem>
+                    <MudSelectItem Value="@("top-left")">Top Left</MudSelectItem>
+                    <MudSelectItem Value="@("top-right")">Top Right</MudSelectItem>
+                </MudSelect>
+            }
+            else if (_operationType == BatchOperationType.PasswordProtect)
+            {
+                <MudTextField @bind-Value="_password"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true" />
+            }
+
+            <MudAlert Severity="Severity.Info" Dense="true">
+                This will process <strong>@Files.Count files</strong> with the selected operation.
+                You can monitor progress in the Batch Operations panel.
+            </MudAlert>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="CreateAndExecuteBatch"
+                   Disabled="@(!IsValid())">
+            Create & Start
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<FileItem> Files { get; set; } = new();
+
+    private string _batchName = string.Empty;
+    private BatchOperationType _operationType = BatchOperationType.Compress;
+    private string _compressionQuality = "medium";
+    private string _watermarkText = "WATERMARK";
+    private double _watermarkOpacity = 0.3;
+    private string _pageNumberPosition = "bottom-center";
+    private string _password = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        // Set default batch name based on operation type
+        UpdateBatchName();
+    }
+
+    private void UpdateBatchName()
+    {
+        _batchName = _operationType switch
+        {
+            BatchOperationType.Compress => $"Compress {Files.Count} PDFs",
+            BatchOperationType.Watermark => $"Add Watermark to {Files.Count} PDFs",
+            BatchOperationType.AddPageNumbers => $"Add Page Numbers to {Files.Count} PDFs",
+            BatchOperationType.PasswordProtect => $"Password Protect {Files.Count} PDFs",
+            _ => $"Batch Operation on {Files.Count} files"
+        };
+    }
+
+    private bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(_batchName)) return false;
+        if (!Files.Any()) return false;
+
+        return _operationType switch
+        {
+            BatchOperationType.Watermark => !string.IsNullOrWhiteSpace(_watermarkText),
+            BatchOperationType.PasswordProtect => !string.IsNullOrWhiteSpace(_password),
+            _ => true
+        };
+    }
+
+    private async Task CreateAndExecuteBatch()
+    {
+        var settings = new Dictionary<string, object>();
+
+        switch (_operationType)
+        {
+            case BatchOperationType.Compress:
+                settings["Quality"] = _compressionQuality;
+                break;
+            case BatchOperationType.Watermark:
+                settings["WatermarkText"] = _watermarkText;
+                settings["Opacity"] = _watermarkOpacity;
+                break;
+            case BatchOperationType.AddPageNumbers:
+                settings["Position"] = _pageNumberPosition;
+                break;
+            case BatchOperationType.PasswordProtect:
+                settings["Password"] = _password;
+                break;
+        }
+
+        try
+        {
+            var batch = await BatchService.CreateBatchOperationAsync(_operationType, _batchName, Files, settings);
+
+            // Execute in background
+            _ = Task.Run(async () =>
+            {
+                await BatchService.ExecuteBatchOperationAsync(batch);
+            });
+
+            Snackbar.Add($"Batch operation '{_batchName}' started!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(batch));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to create batch: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

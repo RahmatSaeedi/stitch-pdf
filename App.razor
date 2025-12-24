@@ -1,0 +1,68 @@
+@using PdfMerger.Client.Services
+@inject IThemeService ThemeService
+
+<MudThemeProvider Theme="_theme" @bind-IsDarkMode="@_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code {
+    private bool _isDarkMode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isDarkMode = await ThemeService.GetIsDarkModeAsync();
+        ThemeService.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            _isDarkMode = await ThemeService.GetIsDarkModeAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+    }
+
+    private MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1976d2",
+            Secondary = "#00897b",
+            AppbarBackground = "#1976d2",
+            AppbarText = "#ffffff",
+            DrawerBackground = "#ffffff",
+            DrawerText = "rgba(0, 0, 0, 0.87)",
+            Background = "#ffffff",
+            Surface = "#ffffff",
+            TextPrimary = "rgba(0, 0, 0, 0.87)",
+            TextSecondary = "rgba(0, 0, 0, 0.6)"
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#42a5f5",
+            Secondary = "#4db6ac",
+            AppbarBackground = "#1e1e1e",
+            AppbarText = "#ffffff",
+            DrawerBackground = "#121212",
+            DrawerText = "rgba(255, 255, 255, 0.87)",
+            Background = "#1a1a1a",
+            Surface = "#1e1e1e",
+            TextPrimary = "rgba(255, 255, 255, 0.87)",
+            TextSecondary = "rgba(255, 255, 255, 0.6)"
+        }
+    };
+}

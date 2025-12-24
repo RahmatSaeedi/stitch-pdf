@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#1976d2" rx="80"/>
+
+  <!-- PDF Document Icon -->
+  <path d="M150 100 h212 a20,20 0 0,1 20,20 v272 a20,20 0 0,1 -20,20 h-212 a20,20 0 0,1 -20,-20 v-272 a20,20 0 0,1 20,-20 z" fill="#ffffff"/>
+
+  <!-- PDF Text -->
+  <text x="256" y="240" font-family="Arial, sans-serif" font-size="80" font-weight="bold" text-anchor="middle" fill="#1976d2">PDF</text>
+
+  <!-- Merge/Plus Icon -->
+  <circle cx="400" cy="120" r="50" fill="#00897b"/>
+  <path d="M400 90 v60 M370 120 h60" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Signature Icon -->
+  <path d="M160 340 q20,-10 40,0 q20,10 40,0" stroke="#1976d2" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>

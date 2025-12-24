@@ -1,0 +1,168 @@
+@using Microsoft.JSInterop
+@using MudBlazor
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h6">Scan Document with Camera</MudText>
+
+            @if (!_cameraAvailable)
+            {
+                <MudAlert Severity="Severity.Warning">
+                    Camera not available or permission denied. Please check your browser settings.
+                </MudAlert>
+            }
+            else if (!_cameraStarted)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="2" Style="padding: 40px;">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Starting camera...</MudText>
+                </MudStack>
+            }
+            else
+            {
+                <MudPaper Elevation="2" Style="position: relative; background-color: #000; overflow: hidden;">
+                    <video id="camera-preview"
+                           autoplay
+                           playsinline
+                           style="width: 100%; height: auto; max-height: 400px; display: block;"
+                           @ref="_videoElement"></video>
+
+                    <canvas id="camera-canvas" style="display: none;" @ref="_canvasElement"></canvas>
+
+                    @if (_capturedImage != null)
+                    {
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                                <img src="@_capturedImage" alt="Captured" style="max-width: 100%; max-height: 350px;" />
+                                <MudStack Row="true" Spacing="2">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Success"
+                                               StartIcon="@Icons.Material.Filled.Check"
+                                               OnClick="AcceptCapture">
+                                        Use This
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.Refresh"
+                                               OnClick="RetakePhoto">
+                                        Retake
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </div>
+                    }
+                </MudPaper>
+
+                @if (_capturedImage == null)
+                {
+                    <MudStack Row="true" Justify="Justify.Center" Spacing="2">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Large"
+                                   StartIcon="@Icons.Material.Filled.CameraAlt"
+                                   OnClick="CapturePhoto">
+                            Capture
+                        </MudButton>
+                    </MudStack>
+                }
+
+                <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
+                    Position your document within the camera view and tap Capture
+                </MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private ElementReference _videoElement;
+    private ElementReference _canvasElement;
+    private IJSObjectReference? _cameraModule;
+    private bool _cameraAvailable;
+    private bool _cameraStarted;
+    private string? _capturedImage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _cameraModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/camera.js");
+
+                // Check camera availability
+                _cameraAvailable = await _cameraModule.InvokeAsync<bool>("checkCameraAvailability");
+                StateHasChanged();
+
+                if (_cameraAvailable)
+                {
+                    // Start camera
+                    _cameraStarted = await _cameraModule.InvokeAsync<bool>("startCamera", "camera-preview");
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing camera: {ex.Message}");
+                _cameraAvailable = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task CapturePhoto()
+    {
+        if (_cameraModule == null) return;
+
+        try
+        {
+            _capturedImage = await _cameraModule.InvokeAsync<string>("capturePhoto", "camera-preview", "camera-canvas");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error capturing photo: {ex.Message}");
+        }
+    }
+
+    private void RetakePhoto()
+    {
+        _capturedImage = null;
+        StateHasChanged();
+    }
+
+    private void AcceptCapture()
+    {
+        if (_capturedImage != null)
+        {
+            MudDialog.Close(DialogResult.Ok(_capturedImage));
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_cameraModule != null)
+        {
+            try
+            {
+                await _cameraModule.InvokeVoidAsync("stopCamera");
+                await _cameraModule.DisposeAsync();
+            }
+            catch { }
+        }
+    }
+}

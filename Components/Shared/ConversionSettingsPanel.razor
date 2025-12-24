@@ -1,0 +1,220 @@
+@using PdfMerger.Client.Models
+
+<MudPaper Elevation="2" Class="pa-4" Style="border-radius: 8px;">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Class="mr-2" />
+            Conversion Settings
+        </MudText>
+
+        <MudDivider />
+
+        @* Page Size *@
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle2">Page Size</MudText>
+            <MudSelect T="PageSize" @bind-Value="Settings.PageSize" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem Value="PageSize.A4">A4 (210 × 297 mm)</MudSelectItem>
+                <MudSelectItem Value="PageSize.A3">A3 (297 × 420 mm)</MudSelectItem>
+                <MudSelectItem Value="PageSize.A5">A5 (148 × 210 mm)</MudSelectItem>
+                <MudSelectItem Value="PageSize.Letter">Letter (8.5 × 11 in)</MudSelectItem>
+                <MudSelectItem Value="PageSize.Legal">Legal (8.5 × 14 in)</MudSelectItem>
+                <MudSelectItem Value="PageSize.Tabloid">Tabloid (11 × 17 in)</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+
+        @* Orientation *@
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle2">Orientation</MudText>
+            <MudRadioGroup T="PageOrientation" @bind-Value="Settings.Orientation">
+                <MudRadio T="PageOrientation" Value="PageOrientation.Portrait" Color="Color.Primary">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Portrait" Size="Size.Small" />
+                        <MudText>Portrait</MudText>
+                    </MudStack>
+                </MudRadio>
+                <MudRadio T="PageOrientation" Value="PageOrientation.Landscape" Color="Color.Primary">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Landscape" Size="Size.Small" />
+                        <MudText>Landscape</MudText>
+                    </MudStack>
+                </MudRadio>
+            </MudRadioGroup>
+        </MudStack>
+
+        @* Normalize Page Sizes *@
+        <MudSwitch @bind-Value="Settings.NormalizePageSizes"
+                   Color="Color.Primary"
+                   Label="Normalize Page Sizes"
+                   Class="mt-2">
+            <MudTooltip Text="When enabled, all pages will be resized to match the selected page size. Recommended for consistent document appearance.">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
+            </MudTooltip>
+        </MudSwitch>
+
+        @* Margins *@
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Margins (in points, 1 inch = 72 points)">
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="Settings.Margins.Top"
+                                         Label="Top"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Min="0"
+                                         Max="144"
+                                         Step="6" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="Settings.Margins.Bottom"
+                                         Label="Bottom"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Min="0"
+                                         Max="144"
+                                         Step="6" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="Settings.Margins.Left"
+                                         Label="Left"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Min="0"
+                                         Max="144"
+                                         Step="6" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="Settings.Margins.Right"
+                                         Label="Right"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Min="0"
+                                         Max="144"
+                                         Step="6" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+
+        @* Page Numbering *@
+        <MudStack Spacing="1">
+            <MudSwitch @bind-Value="Settings.AddPageNumbers" Color="Color.Primary" Label="Add Page Numbers" />
+
+            @if (Settings.AddPageNumbers)
+            {
+                <MudStack Spacing="2" Class="ml-8">
+                    <MudSelect T="PageNumberPosition" @bind-Value="Settings.NumberPosition" Label="Position" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelectItem Value="PageNumberPosition.TopLeft">Top Left</MudSelectItem>
+                        <MudSelectItem Value="PageNumberPosition.TopCenter">Top Center</MudSelectItem>
+                        <MudSelectItem Value="PageNumberPosition.TopRight">Top Right</MudSelectItem>
+                        <MudSelectItem Value="PageNumberPosition.BottomLeft">Bottom Left</MudSelectItem>
+                        <MudSelectItem Value="PageNumberPosition.BottomCenter">Bottom Center</MudSelectItem>
+                        <MudSelectItem Value="PageNumberPosition.BottomRight">Bottom Right</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="Settings.NumberFormat"
+                                  Label="Format"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  HelperText="Use {0} for page number (e.g., 'Page {0}' or '{0} of {1}')" />
+                </MudStack>
+            }
+        </MudStack>
+
+        @* Export Format *@
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle2">Export Format</MudText>
+            <MudRadioGroup T="ExportFormat" @bind-Value="Settings.Format">
+                <MudRadio T="ExportFormat" Value="ExportFormat.PDF" Color="Color.Primary">PDF (Standard)</MudRadio>
+                <MudRadio T="ExportFormat" Value="ExportFormat.PDFA" Color="Color.Primary">PDF/A (Archival)</MudRadio>
+            </MudRadioGroup>
+        </MudStack>
+
+        @* Compression *@
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle2">Compression Level</MudText>
+            <MudSlider @bind-Value="CompressionValue" Min="0" Max="3" Step="1" Color="Color.Primary">
+                <MudText>@GetCompressionLabel()</MudText>
+            </MudSlider>
+        </MudStack>
+
+        @* Image Quality *@
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle2">Image Quality: @Settings.ImageQuality%</MudText>
+            <MudSlider @bind-Value="Settings.ImageQuality" Min="50" Max="100" Step="5" Color="Color.Info" />
+        </MudStack>
+
+        @* Image Options *@
+        <MudSwitch @bind-Value="Settings.CompressImages" Color="Color.Primary" Label="Compress Images" />
+        <MudSwitch @bind-Value="Settings.AutoRotateFromExif" Color="Color.Primary" Label="Auto-Rotate from EXIF Data" />
+
+        @* Reset Button *@
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.RestartAlt"
+                   OnClick="ResetToDefaults"
+                   FullWidth="true">
+            Reset to Defaults
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public PdfConversionOptions Settings { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<PdfConversionOptions> SettingsChanged { get; set; }
+
+    private int CompressionValue
+    {
+        get => Settings.Compression switch
+        {
+            CompressionLevel.None => 0,
+            CompressionLevel.Low => 1,
+            CompressionLevel.Medium => 2,
+            CompressionLevel.High => 3,
+            _ => 2
+        };
+        set
+        {
+            Settings.Compression = value switch
+            {
+                0 => CompressionLevel.None,
+                1 => CompressionLevel.Low,
+                2 => CompressionLevel.Medium,
+                3 => CompressionLevel.High,
+                _ => CompressionLevel.Medium
+            };
+        }
+    }
+
+    private string GetCompressionLabel()
+    {
+        return Settings.Compression switch
+        {
+            CompressionLevel.None => "None",
+            CompressionLevel.Low => "Low",
+            CompressionLevel.Medium => "Medium",
+            CompressionLevel.High => "High",
+            _ => "Medium"
+        };
+    }
+
+    private async Task ResetToDefaults()
+    {
+        Settings.PageSize = PageSize.A4;
+        Settings.Orientation = PageOrientation.Portrait;
+        Settings.NormalizePageSizes = true;
+        Settings.Margins = new Margins { Top = 72, Right = 72, Bottom = 72, Left = 72 };
+        Settings.AddPageNumbers = false;
+        Settings.NumberPosition = PageNumberPosition.BottomCenter;
+        Settings.NumberFormat = "Page {0}";
+        Settings.ImageQuality = 85;
+        Settings.CompressImages = true;
+        Settings.AutoRotateFromExif = false;
+        Settings.Compression = CompressionLevel.Medium;
+        Settings.Format = ExportFormat.PDF;
+
+        await SettingsChanged.InvokeAsync(Settings);
+    }
+}

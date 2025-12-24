@@ -1,0 +1,102 @@
+{
+  "name": "Stitch PDF Converter & Merger",
+  "short_name": "Stitch PDF",
+  "description": "Free PDF toolkit: merge, convert, compress, sign PDFs with OCR in 110+ languages. 100% client-side processing - your files never leave your device. Works offline.",
+  "start_url": "/stitch-pdf/",
+  "scope": "/stitch-pdf/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1976d2",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Merge PDFs",
+      "short_name": "Merge",
+      "description": "Quick access to merge PDF files",
+      "url": "/stitch-pdf/?action=merge",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Scan Document",
+      "short_name": "Scan",
+      "description": "Scan a document with your camera",
+      "url": "/stitch-pdf/?action=scan",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Recent Files",
+      "short_name": "Recent",
+      "description": "View recent files",
+      "url": "/stitch-pdf/?action=recent",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Sign PDF",
+      "short_name": "Sign",
+      "description": "Add signature to PDF",
+      "url": "/stitch-pdf/?action=sign",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/stitch-pdf/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "pdf",
+          "accept": ["application/pdf", "image/*"]
+        }
+      ]
+    }
+  }
+}

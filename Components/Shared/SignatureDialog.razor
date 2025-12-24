@@ -1,0 +1,470 @@
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components
+@using MudBlazor
+@inject IJSRuntime JSRuntime
+@inject ISignatureService SignatureService
+@implements IAsyncDisposable
+
+<MudDialog>
+    <DialogContent>
+        @if (_currentStep == 0)
+        {
+            <MudText Typo="Typo.h6" Class="mb-4">Step 1: Create Your Signature</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.h6" Class="mb-4">Step 2: Configure Placement</MudText>
+        }
+
+        @if (_currentStep == 0)
+        {
+        <MudTabs Elevation="2" Rounded="true" ActivePanelIndex="_activeTab" ActivePanelIndexChanged="OnTabChanged">
+            <MudTabPanel Text="Draw" Icon="@Icons.Material.Filled.Gesture">
+                <div class="pa-4">
+                    <canvas @ref="_signatureCanvas" id="signatureCanvas" style="width: 100%; height: 200px; border: 2px solid #ddd; border-radius: 8px; background: white; touch-action: none;"></canvas>
+                    <div class="d-flex justify-space-between mt-4">
+                        <MudButton OnClick="ClearSignature" StartIcon="@Icons.Material.Filled.Clear" Variant="Variant.Outlined">Clear</MudButton>
+                        <MudButton OnClick="UndoStroke" StartIcon="@Icons.Material.Filled.Undo" Variant="Variant.Outlined">Undo</MudButton>
+                    </div>
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Type" Icon="@Icons.Material.Filled.TextFields">
+                <div class="pa-4">
+                    <MudTextField @bind-Value="_typedText"
+                                  Label="Enter your signature"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="UpdateTypedSignature" />
+                    <MudSelect Value="_selectedFont"
+                               Label="Font Style"
+                               Variant="Variant.Outlined"
+                               Class="mt-4"
+                               ValueChanged="@(async (string newFont) => await OnFontChanged(newFont))">
+                        <MudSelectItem Value="@("cursive")">Cursive</MudSelectItem>
+                        <MudSelectItem Value="@("'Brush Script MT', cursive")">Brush Script</MudSelectItem>
+                        <MudSelectItem Value="@("'Lucida Handwriting', cursive")">Lucida Handwriting</MudSelectItem>
+                        <MudSelectItem Value="@("'Segoe Script', cursive")">Segoe Script</MudSelectItem>
+                    </MudSelect>
+                    @if (!string.IsNullOrWhiteSpace(_typedText) && _typedSignatureUrl != null)
+                    {
+                        <div class="mt-4 pa-4" style="background: white; border: 2px solid #ddd; border-radius: 8px; text-align: center;">
+                            <img src="@_typedSignatureUrl" alt="Typed signature" style="max-width: 100%; height: auto;" />
+                        </div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Upload" Icon="@Icons.Material.Filled.CloudUpload">
+                <div class="pa-4">
+                    <MudFileUpload T="IBrowserFile" Accept="image/*" OnFilesChanged="OnSignatureImageUploaded" SuppressOnChangeWhenInvalid="true">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Upload Signature Image
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                    @if (_uploadedSignatureUrl != null)
+                    {
+                        <div class="mt-4 pa-4" style="background: white; border: 2px solid #ddd; border-radius: 8px; text-align: center;">
+                            <img src="@_uploadedSignatureUrl" alt="Uploaded signature" style="max-width: 100%; max-height: 200px;" />
+                        </div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Saved" Icon="@Icons.Material.Filled.Bookmark">
+                <div class="pa-4">
+                    @if (_savedSignatures.Any())
+                    {
+                        <MudGrid>
+                            @foreach (var sig in _savedSignatures)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudCard>
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.subtitle2">@sig.Name</MudText>
+                                            <img src="@sig.DataUrl" alt="@sig.Name" style="max-width: 100%; height: auto; border: 1px solid #ddd;" />
+                                        </MudCardContent>
+                                        <MudCardActions>
+                                            <MudButton Size="Size.Small" OnClick="() => LoadSignature(sig.DataUrl)">Use</MudButton>
+                                            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => DeleteSignature(sig.Name)">Delete</MudButton>
+                                        </MudCardActions>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No saved signatures yet. Create and save one from the other tabs!</MudText>
+                    }
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+
+        <!-- Background Option for Step 1 -->
+        <div class="mt-4">
+            <MudCheckBox @bind-Value="_transparentBackground" Label="Transparent Background" Color="Color.Primary" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Uncheck for white background</MudText>
+        </div>
+        }
+        else
+        {
+            <!-- Step 2: Placement Configuration -->
+            <MudGrid>
+                <MudItem xs="12">
+                    <div class="pa-4" style="background: #f5f5f5; border: 2px solid #ddd; border-radius: 8px; text-align: center;">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Signature Preview</MudText>
+                        <img src="@_finalSignatureDataUrl" alt="Signature preview" style="max-width: 100%; max-height: 150px; @(_transparentBackground ? "" : "background: white;")" />
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_pageNumber" Label="Page Number" Variant="Variant.Outlined" Min="0" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">0 = first page, 1 = second page, etc.</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_signatureWidth" Label="Width (px)" Variant="Variant.Outlined" Min="50" Max="500" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_signatureHeight" Label="Height (px)" Variant="Variant.Outlined" Min="20" Max="300" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_positionX" Label="X Position (px)" Variant="Variant.Outlined" Min="0" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_positionY" Label="Y Position (px)" Variant="Variant.Outlined" Min="0" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Position (0,0) is top-left corner. Adjust based on your PDF size (typically 595x842 for A4).
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_currentStep == 0)
+        {
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Secondary" OnClick="SaveCurrentSignature" Disabled="@(!HasSignature())">Save Signature</MudButton>
+            <MudButton Color="Color.Primary" OnClick="GoToPlacementStep" Disabled="@(!HasSignature())" EndIcon="@Icons.Material.Filled.ArrowForward">Next</MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="GoBackToSignatureStep" StartIcon="@Icons.Material.Filled.ArrowBack">Back</MudButton>
+            <MudButton Color="Color.Primary" OnClick="Submit" EndIcon="@Icons.Material.Filled.Check">Add to PDF</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private ElementReference _signatureCanvas;
+    private IJSObjectReference? _signatureModule;
+    private int _activeTab = 0;
+    private int _previousTab = 0;
+    private string _typedText = "";
+    private string _selectedFont = "cursive";
+    private string? _typedSignatureUrl;
+    private string? _uploadedSignatureUrl;
+    private List<SavedSignature> _savedSignatures = new();
+    private bool _hasDrawnSignature = false;
+    private bool _isSignaturePadInitialized = false;
+
+    // Two-step dialog navigation
+    private int _currentStep = 0;
+
+    // Placement configuration
+    private int _pageNumber = 0;
+    private int _positionX = 400;
+    private int _positionY = 700;
+    private int _signatureWidth = 150;
+    private int _signatureHeight = 50;
+    private bool _transparentBackground = true;
+    private string? _finalSignatureDataUrl;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _signatureModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/signatureInterop.js");
+                await LoadSavedSignatures();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing signature module: {ex.Message}");
+            }
+        }
+
+        // Re-initialize SignaturePad when returning to Draw tab
+        if (_currentStep == 0 && _activeTab == 0 && _signatureModule != null && !_isSignaturePadInitialized)
+        {
+            try
+            {
+                await _signatureModule.InvokeVoidAsync("initializeSignaturePad", _signatureCanvas, DotNetObjectReference.Create(this));
+                _isSignaturePadInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing signature pad: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task OnTabChanged(int newTabIndex)
+    {
+        // If leaving Draw tab, dispose SignaturePad
+        if (_previousTab == 0 && newTabIndex != 0 && _signatureModule != null)
+        {
+            try
+            {
+                await _signatureModule.InvokeVoidAsync("disposeSignaturePad");
+                _isSignaturePadInitialized = false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing signature pad: {ex.Message}");
+            }
+        }
+
+        _previousTab = _activeTab;
+        _activeTab = newTabIndex;
+
+        // If entering Draw tab, mark for re-initialization
+        if (_activeTab == 0)
+        {
+            _isSignaturePadInitialized = false;
+        }
+
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Update typed signature when text or font changes (only on Type tab)
+        if (_activeTab == 1 && !string.IsNullOrWhiteSpace(_typedText))
+        {
+            await UpdateTypedSignature();
+        }
+    }
+
+    private async Task UpdateTypedSignature()
+    {
+        try
+        {
+            if (_signatureModule != null)
+            {
+                _typedSignatureUrl = await _signatureModule.InvokeAsync<string?>(
+                    "createTypedSignatureWithBackground",
+                    _typedText,
+                    _selectedFont,
+                    48,
+                    "#000000",
+                    _transparentBackground
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating typed signature: {ex.Message}");
+        }
+    }
+
+    private async Task OnFontChanged(string newFont)
+    {
+        _selectedFont = newFont;
+        if (!string.IsNullOrWhiteSpace(_typedText))
+        {
+            await UpdateTypedSignature();
+        }
+    }
+
+    private async Task ClearSignature()
+    {
+        if (_signatureModule != null && _isSignaturePadInitialized)
+        {
+            try
+            {
+                await _signatureModule.InvokeVoidAsync("clearSignature");
+                _hasDrawnSignature = false;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error clearing signature: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void OnSignatureDrawn()
+    {
+        _hasDrawnSignature = true;
+        StateHasChanged();
+    }
+
+    private async Task UndoStroke()
+    {
+        if (_signatureModule != null && _isSignaturePadInitialized)
+        {
+            try
+            {
+                await _signatureModule.InvokeVoidAsync("undoSignature");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error undoing signature: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task OnSignatureImageUploaded(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            try
+            {
+                var buffer = new byte[file.Size];
+                await file.OpenReadStream(10 * 1024 * 1024).ReadAsync(buffer);
+                _uploadedSignatureUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error uploading signature: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadSavedSignatures()
+    {
+        _savedSignatures = await SignatureService.GetSavedSignaturesAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadSignature(string dataUrl)
+    {
+        if (_signatureModule != null && _activeTab == 0)
+        {
+            await _signatureModule.InvokeVoidAsync("loadSignatureFromDataUrl", dataUrl);
+            _hasDrawnSignature = true;
+            StateHasChanged();
+        }
+        else if (_activeTab == 1)
+        {
+            _typedSignatureUrl = dataUrl;
+        }
+        else if (_activeTab == 2)
+        {
+            _uploadedSignatureUrl = dataUrl;
+        }
+    }
+
+    private async Task DeleteSignature(string name)
+    {
+        await SignatureService.DeleteSignatureAsync(name);
+        await LoadSavedSignatures();
+    }
+
+    private async Task SaveCurrentSignature()
+    {
+        var dataUrl = await GetCurrentSignatureDataUrlAsync();
+        if (!string.IsNullOrEmpty(dataUrl))
+        {
+            var name = $"Signature_{DateTime.Now:yyyyMMdd_HHmmss}";
+            await SignatureService.SaveSignatureAsync(name, dataUrl);
+            await LoadSavedSignatures();
+        }
+    }
+
+    private bool HasSignature()
+    {
+        return _activeTab switch
+        {
+            0 => _hasDrawnSignature, // Draw tab
+            1 => !string.IsNullOrEmpty(_typedSignatureUrl), // Type tab
+            2 => !string.IsNullOrEmpty(_uploadedSignatureUrl), // Upload tab
+            _ => false
+        };
+    }
+
+    private string? GetCurrentSignatureDataUrl()
+    {
+        return _activeTab switch
+        {
+            1 => _typedSignatureUrl,
+            2 => _uploadedSignatureUrl,
+            _ => null // Draw tab requires async call
+        };
+    }
+
+    private async Task<string?> GetCurrentSignatureDataUrlAsync()
+    {
+        if (_activeTab == 0 && _signatureModule != null)
+        {
+            return await _signatureModule.InvokeAsync<string?>("getSignatureDataUrlWithBackground", _transparentBackground);
+        }
+        return GetCurrentSignatureDataUrl();
+    }
+
+    private async Task GoToPlacementStep()
+    {
+        _finalSignatureDataUrl = await GetCurrentSignatureDataUrlAsync();
+        if (!string.IsNullOrEmpty(_finalSignatureDataUrl))
+        {
+            _currentStep = 1;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBackToSignatureStep()
+    {
+        _currentStep = 0;
+        StateHasChanged();
+    }
+
+    private async Task Submit()
+    {
+        var signatureDataUrl = _finalSignatureDataUrl ?? await GetCurrentSignatureDataUrlAsync();
+        if (!string.IsNullOrEmpty(signatureDataUrl))
+        {
+            var result = new SignatureResult
+            {
+                DataUrl = signatureDataUrl,
+                PageNumber = _pageNumber,
+                X = _positionX,
+                Y = _positionY,
+                Width = _signatureWidth,
+                Height = _signatureHeight,
+                HasTransparentBackground = _transparentBackground
+            };
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_signatureModule != null)
+        {
+            try
+            {
+                await _signatureModule.InvokeVoidAsync("disposeSignaturePad");
+                await _signatureModule.DisposeAsync();
+            }
+            catch { }
+        }
+    }
+}

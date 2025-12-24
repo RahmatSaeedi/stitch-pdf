@@ -1,0 +1,1619 @@
+@page "/"
+@using PdfMerger.Client.Models
+@using PdfMerger.Client.Components.Shared
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Services.Conversion
+@using PdfMerger.Client.Services.Utilities
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IPdfService PdfService
+@inject IDocumentConversionService DocxConversionService
+@inject IFileValidationService ValidationService
+@inject IMemoryMonitorService MemoryMonitor
+@inject IChunkedProcessorService ChunkedProcessor
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+@inject ISignatureService SignatureService
+@inject IOcrService OcrService
+@inject IAdvancedPdfService AdvancedPdfService
+@inject IThemeService ThemeService
+@inject IRecentFilesService RecentFilesService
+
+<PageTitle>PDF Merger & Converter</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
+    <MudStack Spacing="4">
+        <MudPaper Elevation="0" Class="pa-6">
+            <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="72" height="72">
+                    <!-- Background -->
+                    <rect width="192" height="192" fill="#1976d2" rx="30"/>
+
+                    <!-- PDF Document Icon -->
+                    <path d="M56 37 h80 a8,8 0 0,1 8,8 v102 a8,8 0 0,1 -8,8 h-80 a8,8 0 0,1 -8,-8 v-102 a8,8 0 0,1 8,-8 z" fill="#ffffff"/>
+
+                    <!-- PDF Text -->
+                    <text x="96" y="90" font-family="Arial, sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#1976d2">PDF</text>
+
+                    <!-- Merge/Plus Icon -->
+                    <circle cx="150" cy="45" r="19" fill="#00897b"/>
+                    <path d="M150 34 v22 M139 45 h22" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+
+                    <!-- Signature Icon -->
+                    <path d="M60 128 q8,-4 15,0 q8,4 15,0" stroke="#1976d2" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+                </svg>
+                <MudText Typo="Typo.h3" Align="Align.Center" Color="Color.Primary">PDF Merger & Converter</MudText>
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                    Convert or merge PDFs, images, and documents into a single PDF - 100% client-side processing
+                </MudText>
+                <MudStack Row="true" Justify="Justify.Center" Spacing="2" Style="flex-wrap: wrap;">
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Info"
+                               StartIcon="@Icons.Material.Filled.History"
+                               OnClick="OpenRecentFilesDialog"
+                               Size="Size.Small">
+                        Recent Files
+                    </MudButton>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.LibraryBooks"
+                               OnClick="OpenTemplatesDialog"
+                               Size="Size.Small">
+                        Templates
+                    </MudButton>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Speed"
+                               OnClick="OpenPerformanceSettings"
+                               Size="Size.Small">
+                        Performance
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <FileUploadZone FilesSelected="OnFilesSelectedAsync" />
+
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Row="true" Justify="Justify.Center" Spacing="2" Style="flex-wrap: wrap;">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.CameraAlt"
+                           OnClick="OpenCameraScanner">
+                    Scan with Camera
+                </MudButton>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Style="width: 100%;">
+                    Use your device camera to scan documents and convert to PDF
+                </MudText>
+            </MudStack>
+        </MudPaper>
+
+        @if (_files.Any())
+        {
+            <MudPaper Elevation="2" Class="pa-6">
+                <MudStack Spacing="3">
+                    <div class="d-flex justify-space-between align-center">
+                        <MudText Typo="Typo.h6">@(_files.Count == 1 ? "File to Convert" : $"Files to Merge") (@_files.Count)</MudText>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.ClearAll"
+                                   OnClick="OnClearAll">
+                            Clear All
+                        </MudButton>
+                    </div>
+
+                    <div @ref="_sortableContainer" class="sortable-container" style="display: flex; flex-wrap: wrap; gap: 16px; padding: 16px;">
+                        @foreach (var file in _files.OrderBy(f => f.Order))
+                        {
+                            <div @key="file.Id" class="sortable-item sortable-handle" style="flex: 0 0 calc(33.333% - 11px); min-width: 300px; max-width: 100%;">
+                                <FileListItem File="@file"
+                                              TotalFiles="_files.Count"
+                                              OnRemove="OnRemoveFile"
+                                              OnPageSelectionChanged="OnPageSelectionChanged"
+                                              OnFileSettingsChanged="OnFileSettingsChanged"
+                                              OnPositionChanged="OnFilePositionChanged" />
+                            </div>
+                        }
+                    </div>
+
+                    <MudDivider />
+
+                    @* Conversion Settings Panel *@
+                    <MudExpansionPanels>
+                        <MudExpansionPanel Text="Conversion Settings" Icon="@Icons.Material.Filled.Settings">
+                            <ConversionSettingsPanel Settings="_conversionSettings" SettingsChanged="OnSettingsChanged" />
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+
+                    <MudDivider />
+
+                    @* Memory Warning *@
+                    @if (_memoryWarning != null)
+                    {
+                        <MudAlert Severity="@(_memoryWarning.IsCritical ? Severity.Error : Severity.Warning)"
+                                  Variant="Variant.Filled"
+                                  Dense="true"
+                                  CloseIcon="@Icons.Material.Filled.Close"
+                                  CloseIconClicked="() => _memoryWarning = null">
+                            <MudText Typo="Typo.body2">
+                                <strong>@(_memoryWarning.IsCritical ? "⚠️ Critical:" : "⚡ Warning:")</strong>
+                                Memory usage at @(_memoryWarning.UsedPercent.ToString("F0"))%
+                                (@FormatFileSize(_memoryWarning.UsedMemory) / @FormatFileSize(_memoryWarning.TotalMemory))
+                            </MudText>
+                            @if (_memoryWarning.IsCritical)
+                            {
+                                <MudText Typo="Typo.caption">
+                                    Consider removing some files or processing fewer files at once to prevent crashes.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption">
+                                    Large file processing may be slower. Memory will be managed automatically.
+                                </MudText>
+                            }
+                        </MudAlert>
+                    }
+
+                    @* Processing Progress Indicator *@
+                    @if (_isProcessing)
+                    {
+                        <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background-color: #e3f2fd; border-left: 4px solid #2196f3;">
+                            <MudStack Spacing="2">
+                                <div class="d-flex align-center gap-2">
+                                    <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                                    <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                        @(_files.Count == 1 ? "Converting" : "Merging") @_files.Count @(_files.Count == 1 ? "file" : "files")...
+                                    </MudText>
+                                </div>
+                                <MudProgressLinear Color="Color.Primary" Value="@_processingProgress" Size="Size.Medium" Class="rounded" />
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Processing file @(_processingProgress > 0 ? Math.Ceiling(_processingProgress * _files.Count / 100.0) : 1) of @_files.Count (@_processingProgress%)
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    }
+
+                    <div class="d-flex justify-space-between align-center">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Total Size: @FormatFileSize(_files.Sum(f => f.Size))
+                        </MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Large"
+                                   StartIcon="@(_files.Count == 1 ? Icons.Material.Filled.Transform : Icons.Material.Filled.Merge)"
+                                   Disabled="@(_files.Count < 1 || _isProcessing)"
+                                   OnClick="OnMergePdfs">
+                            @if (_isProcessing)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Processing... @_processingProgress%</span>
+                            }
+                            else
+                            {
+                                <span>@(_files.Count == 1 ? "Convert to PDF" : "Merge to PDF")</span>
+                            }
+                        </MudButton>
+                    </div>
+
+                    @* Advanced Tools Section *@
+                    <MudDivider Class="my-4" />
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.Construction" Class="mr-2" />
+                            Advanced Tools
+                        </MudText>
+                        <MudGrid>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Gesture"
+                                           OnClick="OpenSignatureDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Add Signature
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.TextFields"
+                                           OnClick="OpenOCRDialog"
+                                           Disabled="@(!_files.Any())">
+                                    OCR / Extract Text
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.QrCode"
+                                           OnClick="OpenQRDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Add QR/Barcode
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.ContentCut"
+                                           OnClick="OpenSplitDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Split/Extract Pages
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Colorize"
+                                           OnClick="OpenWatermarkDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Add Watermark
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Numbers"
+                                           OnClick="OpenPageNumbersDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Page Numbers
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Info"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Compress"
+                                           OnClick="OpenCompressDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Compress PDF
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Warning"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Lock"
+                                           OnClick="OpenProtectDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Password Protect
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                            💡 Tip: Upload a PDF file to enable advanced tools
+                        </MudText>
+                    </MudStack>
+
+                    @* Batch Operations Section *@
+                    <MudDivider Class="my-4" />
+                    <MudStack Spacing="2">
+                        <div class="d-flex justify-space-between align-center">
+                            <MudText Typo="Typo.h6" Color="Color.Primary">
+                                <MudIcon Icon="@Icons.Material.Filled.WorkOutline" Class="mr-2" />
+                                Batch Operations
+                            </MudText>
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Info"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.ViewList"
+                                       OnClick="OpenBatchOperationsDialog">
+                                View All
+                            </MudButton>
+                        </div>
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Compress"
+                                           OnClick="OpenBatchCompressDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Batch Compress
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Colorize"
+                                           OnClick="OpenBatchWatermarkDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Batch Watermark
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Numbers"
+                                           OnClick="OpenBatchPageNumbersDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Batch Page Numbers
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Warning"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Lock"
+                                           OnClick="OpenBatchProtectDialog"
+                                           Disabled="@(!HasPdfFiles())">
+                                    Batch Password Protect
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                            ⚡ Process multiple files simultaneously with batch operations
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Elevation="1" Class="pa-6">
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                    No files added yet. Upload files to convert or merge them into a PDF.
+                </MudText>
+            </MudPaper>
+        }
+
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" Color="Color.Primary">Features</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Success" />
+                            <MudText Typo="Typo.body2">100% Client-Side</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Info" />
+                            <MudText Typo="Typo.body2">Fast Processing</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.CloudOff" Color="Color.Warning" />
+                            <MudText Typo="Typo.body2">No Upload Required</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Error" />
+                            <MudText Typo="Typo.body2">Private & Secure</MudText>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<FileItem> _files = new();
+    private bool _isProcessing;
+    private int _processingProgress;
+    private const long MaxFileSize = 1L * 1024 * 1024 * 1024; // 1GB
+    private ElementReference _sortableContainer;
+    private PdfConversionOptions _conversionSettings = new();
+    private IJSObjectReference? _sortableModule;
+    private IJSObjectReference? _keyboardModule;
+    private DotNetObjectReference<Home>? _dotNetHelper;
+    private MemoryInfo? _memoryWarning;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _sortableModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/sortable.js");
+                _keyboardModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/keyboard.js");
+                _dotNetHelper = DotNetObjectReference.Create(this);
+
+                // Initialize keyboard shortcuts
+                if (_keyboardModule != null && _dotNetHelper != null)
+                {
+                    await _keyboardModule.InvokeVoidAsync("initializeKeyboardShortcuts", _dotNetHelper);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading modules: {ex.Message}");
+            }
+        }
+
+        // Reinitialize sortable whenever files change
+        if (_sortableModule != null && _dotNetHelper != null && _files.Any())
+        {
+            try
+            {
+                await _sortableModule.InvokeVoidAsync("initializeSortable", _sortableContainer, _dotNetHelper);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing sortable: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnItemMoved(int oldIndex, int newIndex)
+    {
+        if (oldIndex < 0 || oldIndex >= _files.Count || newIndex < 0 || newIndex >= _files.Count)
+        {
+            return;
+        }
+
+        var item = _files[oldIndex];
+        _files.RemoveAt(oldIndex);
+        _files.Insert(newIndex, item);
+
+        ReorderFiles();
+
+        Snackbar.Add($"Moved {item.Name} to position {newIndex + 1}", Severity.Success);
+
+        // Force re-render to update the UI with new order
+        StateHasChanged();
+
+        // Wait for render to complete, then reinitialize Sortable
+        await Task.Yield(); // Let the render complete
+        await InvokeAsync(async () =>
+        {
+            await Task.Delay(100); // Slightly longer delay to ensure DOM is updated
+            if (_sortableModule != null && _dotNetHelper != null)
+            {
+                await _sortableModule.InvokeVoidAsync("initializeSortable", _sortableContainer, _dotNetHelper);
+            }
+        });
+    }
+
+    [JSInvokable]
+    public async Task OnOpenFiles()
+    {
+        // Trigger file input click via JavaScript
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('input[type=file]')?.click()");
+        }
+        catch
+        {
+            // If JavaScript click fails, show a message
+            Snackbar.Add("Please use the upload area to select files (Ctrl+O)", Severity.Info);
+        }
+    }
+
+    [JSInvokable]
+    public void OnMerge()
+    {
+        if (!_isProcessing && _files.Count > 0)
+        {
+            _ = OnMergePdfs();
+        }
+    }
+
+    [JSInvokable]
+    public void OnEscape()
+    {
+        // Escape closes dialogs (handled by MudBlazor) or clears files if no dialogs are open
+        if (_files.Any())
+        {
+            // Only clear if not processing
+            if (!_isProcessing)
+            {
+                // Note: This might clear files when user wants to close a dialog
+                // In a full implementation, we'd check if a dialog is open first
+                // For now, dialogs have their own Escape handling
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnToggleDarkMode()
+    {
+        await ThemeService.ToggleThemeAsync();
+        Snackbar.Add("Theme toggled", Severity.Info);
+    }
+
+    [JSInvokable]
+    public void OnUndo()
+    {
+        // Implement undo functionality in a future enhancement
+        // For now, show a helpful message
+        Snackbar.Add("Undo: Not yet implemented - coming soon!", Severity.Info);
+    }
+
+    [JSInvokable]
+    public void OnRedo()
+    {
+        // Implement redo functionality in a future enhancement
+        Snackbar.Add("Redo: Not yet implemented - coming soon!", Severity.Info);
+    }
+
+    [JSInvokable]
+    public void OnDeleteSelected()
+    {
+        // Delete selected file - for now, delete the first selected file
+        // In a full implementation, we'd track which file is selected
+        if (_files.Any())
+        {
+            Snackbar.Add("Select a file and press Delete to remove it", Severity.Info);
+        }
+    }
+
+    [JSInvokable]
+    public void OnSelectAll()
+    {
+        // Select all files - this would be used for batch operations
+        // For now, show a message
+        if (_files.Any())
+        {
+            Snackbar.Add($"All {_files.Count} files are in the list", Severity.Info);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnPrint()
+    {
+        // Print the merged PDF - for now, trigger merge if files exist
+        if (_files.Any() && !_isProcessing)
+        {
+            await OnMergePdfs();
+        }
+        else if (!_files.Any())
+        {
+            Snackbar.Add("Add files first to print", Severity.Warning);
+        }
+    }
+
+    [JSInvokable]
+    public void OnNavigateUp()
+    {
+        // Navigate to previous file - implement file selection in future
+        Snackbar.Add("Navigation: Use mouse or touch to select files", Severity.Info);
+    }
+
+    [JSInvokable]
+    public void OnNavigateDown()
+    {
+        // Navigate to next file - implement file selection in future
+        Snackbar.Add("Navigation: Use mouse or touch to select files", Severity.Info);
+    }
+
+    [JSInvokable]
+    public void OnShowHelp()
+    {
+        var isMac = JSRuntime.InvokeAsync<bool>("eval", "navigator.platform.toUpperCase().indexOf('MAC') >= 0").Result;
+        var mod = isMac ? "Cmd" : "Ctrl";
+        Snackbar.Add($"Shortcuts: {mod}+O=Open, {mod}+M=Merge, {mod}+S=Save, {mod}+D=Dark Mode, Esc=Close, {mod}+/=Help", Severity.Info, config =>
+        {
+            config.VisibleStateDuration = 5000;
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_sortableModule != null)
+        {
+            try
+            {
+                await _sortableModule.InvokeVoidAsync("destroySortable");
+                await _sortableModule.DisposeAsync();
+            }
+            catch { }
+        }
+
+        if (_keyboardModule != null)
+        {
+            try
+            {
+                await _keyboardModule.InvokeVoidAsync("disposeKeyboardShortcuts");
+                await _keyboardModule.DisposeAsync();
+            }
+            catch { }
+        }
+
+        _dotNetHelper?.Dispose();
+    }
+
+    private async Task OnFilesSelectedAsync(IReadOnlyList<IBrowserFile> browserFiles)
+    {
+        foreach (var file in browserFiles)
+        {
+            // Validate
+            var validation = ValidationService.ValidateFile(file.Name, file.Size, file.ContentType);
+
+            if (!validation.IsValid)
+            {
+                Snackbar.Add(validation.ErrorMessage ?? "Invalid file", Severity.Error);
+                continue;
+            }
+
+            try
+            {
+                // Read file data
+                var buffer = new byte[file.Size];
+                using var stream = file.OpenReadStream(MaxFileSize);
+                await stream.ReadAsync(buffer);
+
+                // Check if it's a ZIP file - extract and process contents
+                if (file.ContentType == "application/zip" || file.ContentType == "application/x-zip-compressed")
+                {
+                    await ExtractAndAddZipFilesAsync(file.Name, buffer);
+                }
+                else
+                {
+                    // Create FileItem
+                    var fileItem = new FileItem
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = file.Name,
+                        Size = file.Size,
+                        ContentType = file.ContentType,
+                        Data = buffer,
+                        Order = _files.Count
+                    };
+
+                    _files.Add(fileItem);
+
+                    // Generate thumbnail and page count async (don't await - let them complete in background)
+                    _ = GenerateThumbnailAsync(fileItem);
+                    _ = PopulatePageCountAsync(fileItem);
+
+                    Snackbar.Add($"✅ Added: {file.Name}", Severity.Success);
+                }
+            }
+            catch (OutOfMemoryException)
+            {
+                Snackbar.Add($"❌ Out of memory while reading '{file.Name}'. File is too large for your device. Try a smaller file or close other browser tabs.", Severity.Error, config => config.VisibleStateDuration = 6000);
+            }
+            catch (IOException ioEx)
+            {
+                Snackbar.Add($"❌ Cannot read '{file.Name}': {ioEx.Message}. The file may be locked or corrupted. Try closing the file in other programs.", Severity.Error, config => config.VisibleStateDuration = 6000);
+            }
+            catch (Exception ex)
+            {
+                var friendlyMessage = GetFriendlyErrorMessage(ex, file.Name);
+                Snackbar.Add(friendlyMessage, Severity.Error, config => config.VisibleStateDuration = 6000);
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ExtractAndAddZipFilesAsync(string zipFileName, byte[] zipData)
+    {
+        try
+        {
+            var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
+            var extractedFiles = await module.InvokeAsync<List<ExtractedFileData>>("extractZipFiles", zipData);
+
+            if (extractedFiles == null || extractedFiles.Count == 0)
+            {
+                Snackbar.Add($"⚠️ No supported files found in '{zipFileName}'.\n\n💡 Make sure the ZIP contains PDF, images, or supported document formats.", Severity.Warning, config => config.VisibleStateDuration = 5000);
+                return;
+            }
+
+            // Sort files alphabetically by name for predictable merge order
+            var sortedFiles = extractedFiles.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
+
+            foreach (var extracted in sortedFiles)
+            {
+                var fileItem = new FileItem
+                {
+                    Id = Guid.NewGuid(),
+                    Name = extracted.Name,
+                    Size = extracted.Size,
+                    ContentType = extracted.Type,
+                    Data = extracted.Bytes,
+                    Order = _files.Count
+                };
+
+                _files.Add(fileItem);
+                _ = GenerateThumbnailAsync(fileItem);
+                _ = PopulatePageCountAsync(fileItem);
+            }
+
+            Snackbar.Add($"✅ Extracted {sortedFiles.Count} files from '{zipFileName}' (sorted alphabetically)", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"❌ Cannot extract '{zipFileName}': {ex.Message}\n\n💡 The ZIP file may be corrupted or password-protected. Try extracting it manually first.", Severity.Error, config => config.VisibleStateDuration = 6000);
+        }
+    }
+
+    private class ExtractedFileData
+    {
+        public string Name { get; set; } = string.Empty;
+        public byte[] Bytes { get; set; } = Array.Empty<byte>();
+        public string Type { get; set; } = string.Empty;
+        public long Size { get; set; }
+    }
+
+    private async Task GenerateThumbnailAsync(FileItem fileItem)
+    {
+        try
+        {
+            fileItem.ThumbnailDataUrl = await PdfService.GenerateThumbnailAsync(fileItem.Data, fileItem.ContentType);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to generate thumbnail for {fileItem.Name}: {ex.Message}");
+        }
+    }
+
+    private async Task PopulatePageCountAsync(FileItem fileItem)
+    {
+        try
+        {
+            if (fileItem.ContentType == "application/pdf")
+            {
+                fileItem.PageCount = await PdfService.GetPageCountAsync(fileItem.Data);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to get page count for {fileItem.Name}: {ex.Message}");
+        }
+    }
+
+    private void OnRemoveFile(Guid fileId)
+    {
+        var file = _files.FirstOrDefault(f => f.Id == fileId);
+        if (file != null)
+        {
+            _files.Remove(file);
+            ReorderFiles();
+            Snackbar.Add($"Removed: {file.Name}", Severity.Info);
+        }
+    }
+
+    private void OnPageSelectionChanged(FileItem file)
+    {
+        // File's SelectedPages and PageRotations have already been updated by FileListItem
+        // Just trigger a UI update
+        StateHasChanged();
+
+        // Provide feedback to user
+        if (file.SelectedPages.Any())
+        {
+            var rotationText = file.PageRotations.Any() ? $", {file.PageRotations.Count} rotated" : "";
+            Snackbar.Add($"Updated: {file.SelectedPages.Count} of {file.PageCount} pages selected{rotationText}", Severity.Success);
+        }
+        else if (file.PageRotations.Any())
+        {
+            Snackbar.Add($"Updated: {file.PageRotations.Count} pages rotated", Severity.Success);
+        }
+    }
+
+    private void OnFileSettingsChanged(FileItem file)
+    {
+        // File's ConversionOverrides have already been updated by FileListItem
+        // Just trigger a UI update and provide feedback
+        StateHasChanged();
+
+        if (file.ConversionOverrides != null)
+        {
+            Snackbar.Add($"Custom settings applied to {file.Name}", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"Using global settings for {file.Name}", Severity.Info);
+        }
+    }
+
+    private void OnFilePositionChanged((FileItem File, int NewPosition) data)
+    {
+        var file = data.File;
+        int newPosition = data.NewPosition - 1; // Convert from 1-indexed to 0-indexed
+        int oldPosition = file.Order;
+
+        // Validate new position
+        if (newPosition < 0 || newPosition >= _files.Count || newPosition == oldPosition)
+        {
+            return;
+        }
+
+        // Remove file from current position
+        var fileToMove = _files.FirstOrDefault(f => f.Id == file.Id);
+        if (fileToMove == null) return;
+
+        // Reorder: shift other files
+        if (newPosition < oldPosition)
+        {
+            // Moving up: shift files down
+            foreach (var f in _files.Where(f => f.Order >= newPosition && f.Order < oldPosition))
+            {
+                f.Order++;
+            }
+        }
+        else
+        {
+            // Moving down: shift files up
+            foreach (var f in _files.Where(f => f.Order > oldPosition && f.Order <= newPosition))
+            {
+                f.Order--;
+            }
+        }
+
+        // Set new position
+        fileToMove.Order = newPosition;
+
+        // Trigger UI update
+        StateHasChanged();
+
+        // Show feedback
+        Snackbar.Add($"Moved {file.Name} to position {newPosition + 1}", Severity.Success);
+    }
+
+    private Task OnSettingsChanged(PdfConversionOptions settings)
+    {
+        _conversionSettings = settings;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void OnClearAll()
+    {
+        _files.Clear();
+        Snackbar.Add("All files cleared", Severity.Info);
+    }
+
+
+    private void ReorderFiles()
+    {
+        for (int i = 0; i < _files.Count; i++)
+        {
+            _files[i].Order = i;
+        }
+    }
+
+    private async Task ConvertDocxFilesToPdfAsync()
+    {
+        // Find all document files that can be converted with C# libraries (faster than JavaScript)
+        var convertibleFiles = _files.Where(f =>
+            f.ContentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || // DOCX
+            f.ContentType == "text/csv" ||                                                                // CSV
+            f.ContentType == "text/markdown" ||                                                           // Markdown
+            f.ContentType == "text/plain" ||                                                              // Text
+            f.ContentType == "text/html")                                                                 // HTML
+            .ToList();
+
+        if (!convertibleFiles.Any())
+            return;
+
+        try
+        {
+            // Check memory before conversion
+            var memInfo = await MemoryMonitor.GetMemoryInfoAsync();
+            if (memInfo.IsWarning)
+            {
+                _memoryWarning = memInfo;
+                StateHasChanged();
+            }
+
+            // Use chunked processing for large batches (>5 files)
+            if (convertibleFiles.Count > 5)
+            {
+                await ProcessFilesInChunks(convertibleFiles);
+            }
+            else
+            {
+                // Process small batches normally
+                foreach (var file in convertibleFiles)
+                {
+                    await ConvertSingleFile(file);
+                }
+            }
+
+            StateHasChanged();
+
+            // Clear memory warning after successful processing
+            _memoryWarning = null;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Document conversion error: {ex.Message}. Falling back to JavaScript.", Severity.Warning);
+            // If C# conversion fails, the JavaScript pipeline will handle it as a fallback
+        }
+    }
+
+    private async Task ProcessFilesInChunks(List<FileItem> files)
+    {
+        await ChunkedProcessor.ProcessInChunksAsync(
+            files,
+            async (file) => await ConvertSingleFile(file),
+            chunkSize: 3, // Process 3 files at a time to manage memory
+            progress: new Progress<ChunkedProgressInfo>(p =>
+            {
+                // Update progress
+                _processingProgress = p.Percentage;
+                InvokeAsync(StateHasChanged);
+
+                // Check memory usage
+                if (p.MemoryUsedBytes.HasValue)
+                {
+                    var totalMemory = 2147483648L; // 2GB default
+                    var usedPercent = (p.MemoryUsedBytes.Value / (double)totalMemory) * 100;
+                    if (usedPercent > 70)
+                    {
+                        Snackbar.Add($"Memory usage: {usedPercent:F0}% - Managing automatically", Severity.Info);
+                    }
+                }
+            })
+        );
+    }
+
+    private async Task<bool> ConvertSingleFile(FileItem file)
+    {
+        byte[]? pdfBytes = null;
+        var fileType = file.ContentType switch
+        {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => "DOCX",
+            "text/csv" => "CSV",
+            "text/markdown" => "Markdown",
+            "text/plain" => "Text",
+            "text/html" => "HTML",
+            _ => "Document"
+        };
+
+        // Convert using appropriate C# library
+        if (file.ContentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        {
+            pdfBytes = await DocxConversionService.ConvertDocxToPdfAsync(
+                file.Data,
+                file.ConversionOverrides ?? _conversionSettings,
+                null
+            );
+        }
+        else if (file.ContentType == "text/csv")
+        {
+            pdfBytes = await DocxConversionService.ConvertCsvToPdfAsync(
+                file.Data,
+                file.ConversionOverrides ?? _conversionSettings,
+                null
+            );
+        }
+        else if (file.ContentType == "text/markdown")
+        {
+            pdfBytes = await DocxConversionService.ConvertMarkdownToPdfAsync(
+                file.Data,
+                file.ConversionOverrides ?? _conversionSettings,
+                null
+            );
+        }
+        else if (file.ContentType == "text/plain")
+        {
+            pdfBytes = await DocxConversionService.ConvertTextToPdfAsync(
+                file.Data,
+                file.ConversionOverrides ?? _conversionSettings,
+                null
+            );
+        }
+        else if (file.ContentType == "text/html")
+        {
+            pdfBytes = await DocxConversionService.ConvertHtmlToPdfAsync(
+                file.Data,
+                file.ConversionOverrides ?? _conversionSettings,
+                null
+            );
+        }
+
+        if (pdfBytes != null)
+        {
+            // Update the file item to be a PDF
+            file.Data = pdfBytes;
+            file.ContentType = "application/pdf";
+            file.Size = pdfBytes.Length;
+
+            // Update page count for the converted PDF
+            _ = PopulatePageCountAsync(file);
+
+            // Regenerate thumbnail for the PDF
+            _ = GenerateThumbnailAsync(file);
+
+            Snackbar.Add($"Converted {file.Name} ({fileType}) using C# - faster!", Severity.Info);
+        }
+
+        return true;
+    }
+
+    private async Task OnMergePdfs()
+    {
+        if (_files.Count < 1)
+        {
+            Snackbar.Add("Please add at least 1 file to process", Severity.Warning);
+            return;
+        }
+
+        _isProcessing = true;
+        _processingProgress = 0;
+        StateHasChanged();
+
+        try
+        {
+            // Pre-convert DOCX files to PDF using C# Open XML SDK (faster than JavaScript mammoth.js)
+            await ConvertDocxFilesToPdfAsync();
+
+            var progress = new Progress<int>(p =>
+            {
+                _processingProgress = p;
+                InvokeAsync(StateHasChanged);
+            });
+
+            var result = await PdfService.MergeFilesAsync(_files, _conversionSettings, progress);
+
+            if (result.Success && result.Data != null)
+            {
+                var fileName = _files.Count == 1
+                    ? $"converted_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
+                    : $"merged_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                await DownloadFileAsync(fileName, result.Data);
+
+                var successMessage = _files.Count == 1
+                    ? "✅ Successfully converted to PDF!"
+                    : $"✅ Successfully merged {_files.Count} files into one PDF!";
+                Snackbar.Add(successMessage, Severity.Success);
+
+                // Add files to recent history
+                foreach (var file in _files)
+                {
+                    await RecentFilesService.AddRecentFileAsync(
+                        file.Name,
+                        file.Size,
+                        file.ContentType,
+                        file.PageCount ?? 0
+                    );
+                }
+            }
+            else
+            {
+                var errorMsg = result.ErrorMessage ?? "Merge operation failed";
+                Snackbar.Add($"❌ {errorMsg}\n\n💡 Try reducing the number of files or checking file formats.", Severity.Error, config => config.VisibleStateDuration = 6000);
+            }
+        }
+        catch (OutOfMemoryException)
+        {
+            Snackbar.Add("❌ Out of memory during processing.\n\n💡 Suggestions:\n• Process fewer files at once\n• Close other browser tabs\n• Try compressing files before merging\n• Restart your browser", Severity.Error, config => config.VisibleStateDuration = 8000);
+        }
+        catch (Exception ex)
+        {
+            var friendlyMessage = GetFriendlyErrorMessage(ex, "processing");
+            Snackbar.Add($"❌ {friendlyMessage}\n\n💡 If this persists, try refreshing the page and processing fewer files.", Severity.Error, config => config.VisibleStateDuration = 8000);
+        }
+        finally
+        {
+            _isProcessing = false;
+            _processingProgress = 0;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadFileAsync(string fileName, byte[] data)
+    {
+        try
+        {
+            var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
+            await module.InvokeVoidAsync("downloadFile", fileName, data);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"❌ Download failed: {ex.Message}\n\n💡 Check your browser's download settings and popup blockers. Some browsers require user permission for downloads.", Severity.Error, config => config.VisibleStateDuration = 6000);
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string GetFriendlyErrorMessage(Exception ex, string context)
+    {
+        // Convert technical exceptions into user-friendly messages
+        return ex switch
+        {
+            OutOfMemoryException => $"Out of memory while {context}",
+            IOException => $"Cannot access '{context}': {ex.Message}",
+            UnauthorizedAccessException => $"Access denied to '{context}'. Check file permissions.",
+            ArgumentException => $"Invalid data in '{context}': {ex.Message}",
+            InvalidOperationException => $"Cannot process '{context}' in current state: {ex.Message}",
+            TimeoutException => $"Operation timed out while {context}. The file may be too large.",
+            NotSupportedException => $"'{context}' uses an unsupported feature: {ex.Message}",
+            _ => $"Unexpected error with '{context}': {ex.Message}"
+        };
+    }
+
+    // Helper method to check if any PDF files are loaded
+    private bool HasPdfFiles() => _files.Any(f => f.ContentType == "application/pdf");
+
+    // Open recent files dialog
+    private async Task OpenRecentFilesDialog()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<RecentFilesDialog>("Recent Files", options);
+    }
+
+    // Open camera scanner
+    private async Task OpenCameraScanner()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CameraScannerDialog>("Scan Document", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string imageDataUrl)
+        {
+            try
+            {
+                // Convert data URL to byte array
+                var base64Data = imageDataUrl.Split(',')[1];
+                var imageBytes = Convert.FromBase64String(base64Data);
+
+                // Create file item for the scanned image
+                var fileItem = new FileItem
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"Scanned_{DateTime.Now:yyyyMMdd_HHmmss}.jpg",
+                    Size = imageBytes.Length,
+                    ContentType = "image/jpeg",
+                    Data = imageBytes,
+                    Order = _files.Count
+                };
+
+                _files.Add(fileItem);
+
+                // Generate thumbnail and page count
+                _ = GenerateThumbnailAsync(fileItem);
+
+                Snackbar.Add($"✅ Document scanned successfully!", Severity.Success);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"❌ Error processing scanned image: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    // Advanced Tools Methods
+    private async Task OpenSignatureDialog()
+    {
+        var dialog = await DialogService.ShowAsync<SignatureDialog>("Add E-Signature",
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is SignatureResult signatureResult)
+        {
+            // Get the first PDF file
+            var pdfFile = _files.FirstOrDefault(f => f.ContentType == "application/pdf");
+            if (pdfFile != null)
+            {
+                try
+                {
+                    // Add signature with user-configured position and size
+                    var signedPdf = await SignatureService.AddSignatureToPdfAsync(
+                        pdfFile.Data,
+                        signatureResult.DataUrl,
+                        pageNumber: signatureResult.PageNumber,
+                        x: signatureResult.X,
+                        y: signatureResult.Y,
+                        width: signatureResult.Width,
+                        height: signatureResult.Height
+                    );
+
+                    if (signedPdf != null)
+                    {
+                        pdfFile.Data = signedPdf;
+                        pdfFile.Size = signedPdf.Length;
+                        await GenerateThumbnailAsync(pdfFile);
+                        Snackbar.Add("✅ Signature added successfully!", Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add("❌ Failed to add signature", Severity.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+                }
+            }
+        }
+    }
+
+    private async Task OpenOCRDialog()
+    {
+        // Filter files that can be OCR'd (images and PDFs)
+        var ocrableFiles = _files.Where(f =>
+            f.ContentType.StartsWith("image/") ||
+            f.ContentType == "application/pdf")
+            .ToList();
+
+        if (!ocrableFiles.Any())
+        {
+            Snackbar.Add("⚠️ No images or PDFs to perform OCR on. Upload an image or PDF first.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { "Files", ocrableFiles }
+        };
+
+        var dialog = await DialogService.ShowAsync<OcrDialog>("OCR - Extract Text",
+            parameters,
+            new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                CloseOnEscapeKey = true,
+                Position = DialogPosition.Center,
+                CloseButton = true
+            });
+
+        await dialog.Result;
+    }
+
+    private async Task OpenQRDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+
+        if (!pdfFiles.Any())
+        {
+            Snackbar.Add("⚠️ No PDF files to add QR/Barcode to.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var dialog = await DialogService.ShowAsync<QRBarcodeDialog>("Add QR Code or Barcode",
+            parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is byte[] pdfData)
+        {
+            var pdfFile = pdfFiles.FirstOrDefault();
+            if (pdfFile != null)
+            {
+                pdfFile.Data = pdfData;
+                pdfFile.Size = pdfData.Length;
+                await GenerateThumbnailAsync(pdfFile);
+                Snackbar.Add("✅ QR/Barcode added successfully!", Severity.Success);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OpenSplitDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+
+        if (!pdfFiles.Any())
+        {
+            Snackbar.Add("⚠️ No PDF files to split or extract pages from.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var dialog = await DialogService.ShowAsync<SplitPdfDialog>("Split / Extract Pages",
+            parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        await dialog.Result;
+    }
+
+    private async Task OpenWatermarkDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+
+        if (!pdfFiles.Any())
+        {
+            Snackbar.Add("⚠️ No PDF files to add watermark to.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var dialog = await DialogService.ShowAsync<WatermarkDialog>("Add Watermark",
+            parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is byte[] pdfData)
+        {
+            var pdfFile = pdfFiles.FirstOrDefault();
+            if (pdfFile != null)
+            {
+                pdfFile.Data = pdfData;
+                pdfFile.Size = pdfData.Length;
+                await GenerateThumbnailAsync(pdfFile);
+                Snackbar.Add("✅ Watermark added successfully!", Severity.Success);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OpenPageNumbersDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+
+        if (!pdfFiles.Any())
+        {
+            Snackbar.Add("⚠️ No PDF files to add page numbers to.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var dialog = await DialogService.ShowAsync<PageNumbersDialog>("Add Page Numbers",
+            parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is byte[] pdfData)
+        {
+            var pdfFile = pdfFiles.FirstOrDefault();
+            if (pdfFile != null)
+            {
+                pdfFile.Data = pdfData;
+                pdfFile.Size = pdfData.Length;
+                await GenerateThumbnailAsync(pdfFile);
+                Snackbar.Add("✅ Page numbers added successfully!", Severity.Success);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OpenCompressDialog()
+    {
+        var pdfFile = _files.FirstOrDefault(f => f.ContentType == "application/pdf");
+        if (pdfFile == null) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Compress PDF",
+            "This will reduce the PDF file size. Continue?",
+            yesText: "Compress", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                _isProcessing = true;
+                StateHasChanged();
+
+                var compressed = await AdvancedPdfService.CompressPdfAsync(pdfFile.Data, quality: "medium");
+
+                if (compressed != null && compressed.Length < pdfFile.Data.Length)
+                {
+                    var oldSize = pdfFile.Size;
+                    pdfFile.Data = compressed;
+                    pdfFile.Size = compressed.Length;
+                    var savedPercent = ((oldSize - compressed.Length) / (double)oldSize) * 100;
+                    Snackbar.Add($"✅ Compressed! Saved {savedPercent:F1}% ({FormatFileSize(oldSize - compressed.Length)})", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("ℹ️ File is already well compressed", Severity.Info);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _isProcessing = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OpenProtectDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+
+        if (!pdfFiles.Any())
+        {
+            Snackbar.Add("⚠️ No PDF files to protect.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var dialog = await DialogService.ShowAsync<PasswordProtectDialog>("Password Protect PDF",
+            parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is byte[] pdfData)
+        {
+            var pdfFile = pdfFiles.FirstOrDefault();
+            if (pdfFile != null)
+            {
+                pdfFile.Data = pdfData;
+                pdfFile.Size = pdfData.Length;
+                await GenerateThumbnailAsync(pdfFile);
+                Snackbar.Add("🔒 PDF password protected successfully!", Severity.Success);
+                StateHasChanged();
+            }
+        }
+    }
+
+    // Batch Operations Methods
+    private async Task OpenBatchOperationsDialog()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<BatchOperationsDialog>("Batch Operations", options);
+    }
+
+    private async Task OpenBatchCompressDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+        if (!pdfFiles.Any()) return;
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<CreateBatchDialog>("Create Batch Compress", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Batch compress operation started! Check 'View All' to monitor progress.", Severity.Info);
+        }
+    }
+
+    private async Task OpenBatchWatermarkDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+        if (!pdfFiles.Any()) return;
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<CreateBatchDialog>("Create Batch Watermark", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Batch watermark operation started! Check 'View All' to monitor progress.", Severity.Info);
+        }
+    }
+
+    private async Task OpenBatchPageNumbersDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+        if (!pdfFiles.Any()) return;
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<CreateBatchDialog>("Create Batch Page Numbers", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Batch page numbers operation started! Check 'View All' to monitor progress.", Severity.Info);
+        }
+    }
+
+    private async Task OpenBatchProtectDialog()
+    {
+        var pdfFiles = _files.Where(f => f.ContentType == "application/pdf").ToList();
+        if (!pdfFiles.Any()) return;
+
+        var parameters = new DialogParameters { { "Files", pdfFiles } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<CreateBatchDialog>("Create Batch Password Protect", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Batch password protect operation started! Check 'View All' to monitor progress.", Severity.Info);
+        }
+    }
+
+    // Templates Methods
+    private async Task OpenTemplatesDialog()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<TemplatesDialog>("Templates", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is Template template)
+        {
+            // Template was applied - use settings from template
+            if (template.Type == TemplateType.ConversionSettings || template.Type == TemplateType.MergeSettings)
+            {
+                // Apply conversion settings
+                ApplyTemplateSettings(template);
+                Snackbar.Add($"Template '{template.Name}' settings applied!", Severity.Success);
+            }
+        }
+    }
+
+    private void ApplyTemplateSettings(Template template)
+    {
+        // Apply settings from template to conversion settings
+        if (template.Settings.ContainsKey("PageSize"))
+        {
+            var pageSizeStr = template.Settings["PageSize"].ToString();
+            if (Enum.TryParse<PageSize>(pageSizeStr, out var pageSize))
+            {
+                _conversionSettings.PageSize = pageSize;
+            }
+        }
+        if (template.Settings.ContainsKey("Orientation"))
+        {
+            var orientationStr = template.Settings["Orientation"].ToString();
+            if (Enum.TryParse<PageOrientation>(orientationStr, out var orientation))
+            {
+                _conversionSettings.Orientation = orientation;
+            }
+        }
+        if (template.Settings.ContainsKey("ImageQuality"))
+        {
+            _conversionSettings.ImageQuality = Convert.ToInt32(template.Settings["ImageQuality"]);
+        }
+
+        StateHasChanged();
+    }
+
+    // Performance Settings Methods
+    private async Task OpenPerformanceSettings()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<PerformanceSettingsDialog>("Performance Settings", options);
+    }
+}

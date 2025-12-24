@@ -1,0 +1,47 @@
+@using PdfMerger.Client.Models
+
+<MudPaper Elevation="2" Class="pa-4 mb-2" Style="cursor: grab; display: flex; align-items: center; gap: 16px;">
+    <MudChip T="string" Color="Color.Primary" Size="Size.Small">
+        #@(File.Order + 1)
+    </MudChip>
+
+    @if (!string.IsNullOrEmpty(File.ThumbnailDataUrl))
+    {
+        <img src="@File.ThumbnailDataUrl" alt="@File.Name" style="width: 100px; height: 100px; object-fit: contain;" />
+    }
+
+    <div style="flex: 1;">
+        <MudText Typo="Typo.subtitle1">@File.Name</MudText>
+        <MudText Typo="Typo.caption">@FormatFileSize(File.Size)</MudText>
+    </div>
+
+    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                   Color="Color.Error"
+                   OnClick="OnRemoveClicked" />
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileItem File { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<Guid> OnRemove { get; set; }
+
+    private async Task OnRemoveClicked()
+    {
+        await OnRemove.InvokeAsync(File.Id);
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}

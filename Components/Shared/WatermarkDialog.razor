@@ -1,0 +1,326 @@
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Models
+@inject IAdvancedPdfService AdvancedPdfService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (!_isProcessing && string.IsNullOrEmpty(_resultMessage))
+            {
+                <MudText Typo="Typo.h6">Add Watermark to PDF</MudText>
+
+                @if (Files.Count > 1)
+                {
+                    <MudSelect @bind-Value="_selectedFile" Label="Select PDF File" Variant="Variant.Outlined">
+                        @foreach (var file in Files)
+                        {
+                            <MudSelectItem Value="@file">@file.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (Files.Count == 1)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <strong>File:</strong> @Files[0].Name
+                    </MudAlert>
+                }
+
+                <MudRadioGroup @bind-Value="_watermarkType">
+                    <MudRadio T="string" Value="@("text")" Color="Color.Primary">Text Watermark</MudRadio>
+                    <MudRadio T="string" Value="@("image")" Color="Color.Primary">Image Watermark</MudRadio>
+                </MudRadioGroup>
+
+                @if (_watermarkType == "text")
+                {
+                    <MudTextField @bind-Value="_watermarkText"
+                                  Label="Watermark Text"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Enter text to display as watermark"
+                                  Required="true" />
+
+                    <MudNumericField @bind-Value="_fontSize"
+                                     Label="Font Size"
+                                     Variant="Variant.Outlined"
+                                     Min="10"
+                                     Max="200"
+                                     Step="5" />
+
+                    <MudSlider @bind-Value="_opacity"
+                               Min="0.0"
+                               Max="1.0"
+                               Step="0.05"
+                               Color="Color.Primary">
+                        Opacity: @_opacity.ToString("F2")
+                    </MudSlider>
+
+                    <MudNumericField @bind-Value="_rotation"
+                                     Label="Rotation (degrees)"
+                                     Variant="Variant.Outlined"
+                                     Min="-180"
+                                     Max="180"
+                                     Step="15" />
+
+                    <MudColorPicker @bind-Value="_watermarkColor"
+                                    Label="Color"
+                                    Variant="Variant.Outlined"
+                                    ColorPickerView="ColorPickerView.Palette" />
+
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        <MudText Typo="Typo.caption">
+                            Text watermark will be applied diagonally across all pages. Common uses: "CONFIDENTIAL", "DRAFT", "COPY".
+                        </MudText>
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudFileUpload T="IBrowserFile"
+                                   Accept="image/*"
+                                   OnFilesChanged="OnWatermarkImageUploaded"
+                                   MaxFileSize="@(5 * 1024 * 1024)">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       FullWidth="true">
+                                @(_watermarkImageBytes == null ? "Upload Watermark Image" : "Change Image")
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+
+                    @if (_watermarkImageBytes != null)
+                    {
+                        <MudAlert Severity="Severity.Success" Dense="true">
+                            <MudText Typo="Typo.caption">
+                                Image uploaded: @_watermarkImageType (@FormatFileSize(_watermarkImageBytes.Length))
+                            </MudText>
+                        </MudAlert>
+                    }
+
+                    <MudSlider @bind-Value="_imageScale"
+                               Min="0.1"
+                               Max="1.0"
+                               Step="0.05"
+                               Color="Color.Primary">
+                        Scale: @_imageScale.ToString("F2")
+                    </MudSlider>
+
+                    <MudSlider @bind-Value="_opacity"
+                               Min="0.0"
+                               Max="1.0"
+                               Step="0.05"
+                               Color="Color.Primary">
+                        Opacity: @_opacity.ToString("F2")
+                    </MudSlider>
+
+                    <MudSelect @bind-Value="_imagePosition" Label="Position" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("center")">Center</MudSelectItem>
+                        <MudSelectItem Value="@("top-left")">Top Left</MudSelectItem>
+                        <MudSelectItem Value="@("top-right")">Top Right</MudSelectItem>
+                        <MudSelectItem Value="@("bottom-left")">Bottom Left</MudSelectItem>
+                        <MudSelectItem Value="@("bottom-right")">Bottom Right</MudSelectItem>
+                    </MudSelect>
+
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        <MudText Typo="Typo.caption">
+                            Image watermark will be applied to all pages. Common uses: Company logo, stamp, seal.
+                        </MudText>
+                    </MudAlert>
+                }
+            }
+
+            @if (_isProcessing)
+            {
+                <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                    <MudText Typo="Typo.h6">Adding watermark...</MudText>
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_resultMessage))
+            {
+                <MudAlert Severity="Severity.Success">
+                    @_resultMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@(string.IsNullOrEmpty(_resultMessage) ? "Cancel" : "Close")</MudButton>
+        @if (string.IsNullOrEmpty(_resultMessage) && !_isProcessing)
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="AddWatermark"
+                       Disabled="@(!IsInputValid())">
+                Add Watermark
+            </MudButton>
+        }
+        @if (!string.IsNullOrEmpty(_resultMessage))
+        {
+            <MudButton Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       OnClick="StartNew">
+                Add Another Watermark
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<FileItem> Files { get; set; } = new();
+
+    private FileItem? _selectedFile;
+    private string _watermarkType = "text"; // text or image
+    private string _watermarkText = "CONFIDENTIAL";
+    private int _fontSize = 48;
+    private double _opacity = 0.3;
+    private int _rotation = -45;
+    private MudBlazor.Utilities.MudColor _watermarkColor = new MudBlazor.Utilities.MudColor("#000000");
+    private byte[]? _watermarkImageBytes;
+    private string _watermarkImageType = "";
+    private double _imageScale = 0.3;
+    private string _imagePosition = "center";
+    private bool _isProcessing;
+    private string _resultMessage = "";
+    private string _errorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        _selectedFile = Files.FirstOrDefault();
+    }
+
+    private bool IsInputValid()
+    {
+        if (_selectedFile == null) return false;
+
+        if (_watermarkType == "text")
+        {
+            return !string.IsNullOrWhiteSpace(_watermarkText);
+        }
+        else
+        {
+            return _watermarkImageBytes != null;
+        }
+    }
+
+    private async Task OnWatermarkImageUploaded(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                _watermarkImageType = file.ContentType;
+                using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                _watermarkImageBytes = ms.ToArray();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to upload image: {ex.Message}";
+            Console.WriteLine($"Image upload error: {ex}");
+        }
+    }
+
+    private async Task AddWatermark()
+    {
+        if (_selectedFile == null) return;
+
+        _isProcessing = true;
+        _errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            byte[]? result = null;
+
+            if (_watermarkType == "text")
+            {
+                var options = new WatermarkOptions
+                {
+                    FontSize = _fontSize,
+                    Opacity = (float)_opacity,
+                    Rotation = _rotation,
+                    Color = "#000000" // Convert MudColor to hex if needed
+                };
+
+                result = await AdvancedPdfService.AddWatermarkAsync(_selectedFile.Data, _watermarkText, options);
+            }
+            else
+            {
+                if (_watermarkImageBytes != null)
+                {
+                    var options = new ImageWatermarkOptions
+                    {
+                        Scale = (float)_imageScale,
+                        Opacity = (float)_opacity,
+                        Position = _imagePosition
+                    };
+
+                    result = await AdvancedPdfService.AddImageWatermarkAsync(
+                        _selectedFile.Data,
+                        _watermarkImageBytes,
+                        _watermarkImageType,
+                        options);
+                }
+            }
+
+            if (result != null)
+            {
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                _errorMessage = "Failed to add watermark to PDF";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Watermark error: {ex}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private void StartNew()
+    {
+        _resultMessage = "";
+        _errorMessage = "";
+        _watermarkText = "CONFIDENTIAL";
+        _watermarkImageBytes = null;
+        StateHasChanged();
+    }
+
+    private void Close() => MudDialog.Cancel();
+
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+}

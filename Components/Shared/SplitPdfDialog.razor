@@ -1,0 +1,440 @@
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Models
+@inject IAdvancedPdfService AdvancedPdfService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (!_isProcessing && _splitResults.Count == 0)
+            {
+                <MudText Typo="Typo.h6">Split or Extract PDF Pages</MudText>
+
+                @if (Files.Count > 1)
+                {
+                    <MudSelect @bind-Value="_selectedFile" Label="Select PDF File" Variant="Variant.Outlined">
+                        @foreach (var file in Files)
+                        {
+                            <MudSelectItem Value="@file">@file.Name (@file.PageCount pages)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (Files.Count == 1)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <strong>File:</strong> @Files[0].Name (@Files[0].PageCount pages)
+                    </MudAlert>
+                }
+
+                <MudRadioGroup @bind-Value="_operationType">
+                    <MudRadio T="string" Value="@("extract")" Color="Color.Primary">Extract Specific Pages</MudRadio>
+                    <MudRadio T="string" Value="@("split")" Color="Color.Primary">Split into Multiple PDFs</MudRadio>
+                    <MudRadio T="string" Value="@("delete")" Color="Color.Primary">Delete Pages</MudRadio>
+                </MudRadioGroup>
+
+                @if (_operationType == "extract")
+                {
+                    <MudTextField @bind-Value="_pageRanges"
+                                  Label="Pages to Extract"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Enter page numbers (e.g., 1,3,5-8,10)"
+                                  Required="true" />
+
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        <MudText Typo="Typo.caption">
+                            Creates a new PDF with only the specified pages. Original file remains unchanged.
+                        </MudText>
+                    </MudAlert>
+                }
+                else if (_operationType == "split")
+                {
+                    <MudText Typo="Typo.body2">Split Options:</MudText>
+
+                    <MudRadioGroup @bind-Value="_splitMode">
+                        <MudRadio T="string" Value="@("pages")" Color="Color.Secondary">Split every N pages</MudRadio>
+                        <MudRadio T="string" Value="@("count")" Color="Color.Secondary">Split into N files</MudRadio>
+                        <MudRadio T="string" Value="@("custom")" Color="Color.Secondary">Custom ranges</MudRadio>
+                    </MudRadioGroup>
+
+                    @if (_splitMode == "pages")
+                    {
+                        <MudNumericField @bind-Value="_splitEveryPages"
+                                         Label="Split Every N Pages"
+                                         Variant="Variant.Outlined"
+                                         Min="1"
+                                         Max="@(_selectedFile?.PageCount ?? 100)" />
+                    }
+                    else if (_splitMode == "count")
+                    {
+                        <MudNumericField @bind-Value="_splitIntoCount"
+                                         Label="Number of Files"
+                                         Variant="Variant.Outlined"
+                                         Min="2"
+                                         Max="@(_selectedFile?.PageCount ?? 100)" />
+                    }
+                    else if (_splitMode == "custom")
+                    {
+                        <MudTextField @bind-Value="_customRanges"
+                                      Label="Custom Ranges"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      HelperText="Enter ranges, one per line (e.g., 1-5, 6-10, 11-15)"
+                                      Required="true" />
+                    }
+
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        <MudText Typo="Typo.caption">
+                            Splits the PDF into multiple files. You'll be able to download each file separately.
+                        </MudText>
+                    </MudAlert>
+                }
+                else if (_operationType == "delete")
+                {
+                    <MudTextField @bind-Value="_pageRanges"
+                                  Label="Pages to Delete"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Enter page numbers (e.g., 2,4,6-9)"
+                                  Required="true" />
+
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        <MudText Typo="Typo.caption">
+                            Creates a new PDF without the specified pages. Original file remains unchanged.
+                        </MudText>
+                    </MudAlert>
+                }
+            }
+
+            @if (_isProcessing)
+            {
+                <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                    <MudText Typo="Typo.h6">@_statusMessage</MudText>
+                </MudStack>
+            }
+
+            @if (_splitResults.Count > 0)
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">@(_operationType == "split" ? "Split Results" : "Result")</MudText>
+
+                    @foreach (var result in _splitResults)
+                    {
+                        <MudPaper Elevation="2" Class="pa-3">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <div>
+                                    <MudText Typo="Typo.body1"><strong>@result.Name</strong></MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @result.PageCount page@(result.PageCount != 1 ? "s" : "") • @FormatFileSize(result.Bytes.Length)
+                                    </MudText>
+                                </div>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Download"
+                                           OnClick="@(() => DownloadResult(result))">
+                                    Download
+                                </MudButton>
+                            </MudStack>
+                        </MudPaper>
+                    }
+
+                    <MudAlert Severity="Severity.Success">
+                        Generated @_splitResults.Count file@(_splitResults.Count != 1 ? "s" : "")
+                    </MudAlert>
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@(_splitResults.Count > 0 ? "Close" : "Cancel")</MudButton>
+        @if (_splitResults.Count == 0 && !_isProcessing)
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="ProcessPdf"
+                       Disabled="@(_selectedFile == null || !IsInputValid())">
+                @(_operationType == "extract" ? "Extract Pages" : _operationType == "delete" ? "Delete Pages" : "Split PDF")
+            </MudButton>
+        }
+        @if (_splitResults.Count > 0)
+        {
+            <MudButton Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       OnClick="StartNew">
+                Process Another
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<FileItem> Files { get; set; } = new();
+
+    private FileItem? _selectedFile;
+    private string _operationType = "extract"; // extract, split, delete
+    private string _splitMode = "pages"; // pages, count, custom
+    private string _pageRanges = "";
+    private string _customRanges = "";
+    private int _splitEveryPages = 1;
+    private int _splitIntoCount = 2;
+    private bool _isProcessing;
+    private string _statusMessage = "";
+    private string _errorMessage = "";
+    private List<SplitPdfResult> _splitResults = new();
+
+    protected override void OnInitialized()
+    {
+        _selectedFile = Files.FirstOrDefault();
+    }
+
+    private bool IsInputValid()
+    {
+        if (_operationType == "extract" || _operationType == "delete")
+        {
+            return !string.IsNullOrWhiteSpace(_pageRanges);
+        }
+        else if (_operationType == "split")
+        {
+            if (_splitMode == "custom")
+            {
+                return !string.IsNullOrWhiteSpace(_customRanges);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private List<int> ParsePageNumbers(string input)
+    {
+        var pages = new List<int>();
+        var parts = input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var part in parts)
+        {
+            if (part.Contains('-'))
+            {
+                var range = part.Split('-');
+                if (range.Length == 2 && int.TryParse(range[0], out int start) && int.TryParse(range[1], out int end))
+                {
+                    for (int i = start; i <= end; i++)
+                    {
+                        if (!pages.Contains(i))
+                            pages.Add(i);
+                    }
+                }
+            }
+            else if (int.TryParse(part, out int page))
+            {
+                if (!pages.Contains(page))
+                    pages.Add(page);
+            }
+        }
+
+        return pages.OrderBy(p => p).ToList();
+    }
+
+    private List<PdfMerger.Client.Services.PageRange> ParsePageRanges(string input)
+    {
+        var ranges = new List<PdfMerger.Client.Services.PageRange>();
+        var lines = input.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var line in lines)
+        {
+            var parts = line.Split('-');
+            if (parts.Length == 2 && int.TryParse(parts[0], out int start) && int.TryParse(parts[1], out int end))
+            {
+                ranges.Add(new PdfMerger.Client.Services.PageRange { Start = start, End = end });
+            }
+        }
+
+        return ranges;
+    }
+
+    private async Task ProcessPdf()
+    {
+        if (_selectedFile == null) return;
+
+        _isProcessing = true;
+        _statusMessage = "Processing PDF...";
+        _errorMessage = "";
+        _splitResults.Clear();
+        StateHasChanged();
+
+        try
+        {
+            if (_operationType == "extract")
+            {
+                var pages = ParsePageNumbers(_pageRanges);
+                if (pages.Count == 0)
+                {
+                    _errorMessage = "No valid page numbers specified";
+                    return;
+                }
+
+                var result = await AdvancedPdfService.ExtractPagesAsync(_selectedFile.Data, pages);
+                if (result != null)
+                {
+                    _splitResults.Add(new SplitPdfResult
+                    {
+                        Name = $"{Path.GetFileNameWithoutExtension(_selectedFile.Name)}_extracted.pdf",
+                        Bytes = result,
+                        PageCount = pages.Count
+                    });
+                }
+                else
+                {
+                    _errorMessage = "Failed to extract pages";
+                }
+            }
+            else if (_operationType == "delete")
+            {
+                var pages = ParsePageNumbers(_pageRanges);
+                if (pages.Count == 0)
+                {
+                    _errorMessage = "No valid page numbers specified";
+                    return;
+                }
+
+                var result = await AdvancedPdfService.DeletePagesAsync(_selectedFile.Data, pages);
+                if (result != null)
+                {
+                    _splitResults.Add(new SplitPdfResult
+                    {
+                        Name = $"{Path.GetFileNameWithoutExtension(_selectedFile.Name)}_modified.pdf",
+                        Bytes = result,
+                        PageCount = (_selectedFile.PageCount ?? 0) - pages.Count
+                    });
+                }
+                else
+                {
+                    _errorMessage = "Failed to delete pages";
+                }
+            }
+            else if (_operationType == "split")
+            {
+                List<PdfMerger.Client.Services.PageRange>? ranges = null;
+
+                if (_splitMode == "pages")
+                {
+                    ranges = GenerateRangesByPages(_selectedFile.PageCount ?? 0, _splitEveryPages);
+                }
+                else if (_splitMode == "count")
+                {
+                    ranges = GenerateRangesByCount(_selectedFile.PageCount ?? 0, _splitIntoCount);
+                }
+                else if (_splitMode == "custom")
+                {
+                    ranges = ParsePageRanges(_customRanges);
+                }
+
+                if (ranges == null || ranges.Count == 0)
+                {
+                    _errorMessage = "No valid ranges specified";
+                    return;
+                }
+
+                var results = await AdvancedPdfService.SplitPdfAsync(_selectedFile.Data, ranges);
+                if (results != null && results.Count > 0)
+                {
+                    _splitResults = results;
+                }
+                else
+                {
+                    _errorMessage = "Failed to split PDF";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Split PDF error: {ex}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            _statusMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private List<PdfMerger.Client.Services.PageRange> GenerateRangesByPages(int totalPages, int pagesPerFile)
+    {
+        var ranges = new List<PdfMerger.Client.Services.PageRange>();
+        for (int i = 1; i <= totalPages; i += pagesPerFile)
+        {
+            ranges.Add(new PdfMerger.Client.Services.PageRange
+            {
+                Start = i,
+                End = Math.Min(i + pagesPerFile - 1, totalPages)
+            });
+        }
+        return ranges;
+    }
+
+    private List<PdfMerger.Client.Services.PageRange> GenerateRangesByCount(int totalPages, int fileCount)
+    {
+        var ranges = new List<PdfMerger.Client.Services.PageRange>();
+        int pagesPerFile = (int)Math.Ceiling((double)totalPages / fileCount);
+
+        for (int i = 0; i < fileCount; i++)
+        {
+            int start = i * pagesPerFile + 1;
+            int end = Math.Min(start + pagesPerFile - 1, totalPages);
+
+            if (start <= totalPages)
+            {
+                ranges.Add(new PdfMerger.Client.Services.PageRange { Start = start, End = end });
+            }
+        }
+
+        return ranges;
+    }
+
+    private async Task DownloadResult(SplitPdfResult result)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("downloadFile", result.Name, result.Bytes);
+            Snackbar.Add($"✅ Downloaded: {result.Name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"⚠️ Download failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private void StartNew()
+    {
+        _splitResults.Clear();
+        _errorMessage = "";
+        _pageRanges = "";
+        _customRanges = "";
+        StateHasChanged();
+    }
+
+    private void Close() => MudDialog.Cancel();
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+}

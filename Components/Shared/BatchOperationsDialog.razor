@@ -1,0 +1,302 @@
+@using PdfMerger.Client.Models
+@using PdfMerger.Client.Services
+@using Microsoft.JSInterop
+@inject IBatchOperationsService BatchService
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary">
+                <MudTabPanel Text="Active" Icon="@Icons.Material.Filled.PlayCircle" BadgeData="@_activeBatches.Count" BadgeColor="Color.Success">
+                    @if (_activeBatches.Any())
+                    {
+                        <MudStack Spacing="2" Class="mt-3">
+                            @foreach (var batch in _activeBatches)
+                            {
+                                <MudPaper Elevation="1" Class="pa-4">
+                                    <MudStack Spacing="2">
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudIcon Icon="@GetOperationIcon(batch.Type)" Color="Color.Primary" Size="Size.Small" />
+                                                <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">@batch.Name</MudText>
+                                            </MudStack>
+                                            @if (batch.Status == BatchOperationStatus.Processing)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.Stop"
+                                                               Color="Color.Error"
+                                                               Size="Size.Small"
+                                                               OnClick="@(() => CancelBatch(batch.Id))"
+                                                               title="Cancel" />
+                                            }
+                                        </div>
+
+                                        <MudProgressLinear Color="Color.Primary"
+                                                           Value="@batch.Progress"
+                                                           Size="Size.Medium"
+                                                           Class="rounded" />
+
+                                        <div class="d-flex justify-space-between">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @batch.ProcessedItems of @batch.TotalItems items
+                                                @if (batch.FailedItems > 0)
+                                                {
+                                                    <span style="color: var(--mud-palette-error);"> (@batch.FailedItems failed)</span>
+                                                }
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Primary">
+                                                @batch.Progress.ToString("F0")%
+                                            </MudText>
+                                        </div>
+
+                                        @if (batch.Status == BatchOperationStatus.Processing)
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                                <MudText Typo="Typo.caption" Color="Color.Info">Processing...</MudText>
+                                            </MudStack>
+                                        }
+                                        else if (batch.Status == BatchOperationStatus.Pending)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Pending</MudText>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudPaper Elevation="0" Class="pa-6 mt-3">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                    No active batch operations
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudTabPanel>
+
+                <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History" BadgeData="@_completedBatches.Count" BadgeColor="Color.Info">
+                    @if (_completedBatches.Any())
+                    {
+                        <MudStack Spacing="2" Class="mt-3">
+                            <div class="d-flex justify-end">
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.ClearAll"
+                                           OnClick="ClearHistory">
+                                    Clear History
+                                </MudButton>
+                            </div>
+
+                            @foreach (var batch in _completedBatches)
+                            {
+                                <MudPaper Elevation="1" Class="pa-4">
+                                    <MudStack Spacing="2">
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudIcon Icon="@GetOperationIcon(batch.Type)" Color="Color.Primary" Size="Size.Small" />
+                                                <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">@batch.Name</MudText>
+                                            </MudStack>
+                                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                                @if (batch.Status == BatchOperationStatus.Completed)
+                                                {
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                                                        <MudText Typo="Typo.caption" Color="Color.Success">Completed</MudText>
+                                                    </MudStack>
+                                                }
+                                                else if (batch.Status == BatchOperationStatus.Failed)
+                                                {
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" />
+                                                        <MudText Typo="Typo.caption" Color="Color.Error">Failed</MudText>
+                                                    </MudStack>
+                                                }
+                                                else if (batch.Status == BatchOperationStatus.Cancelled)
+                                                {
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Color="Color.Warning" />
+                                                        <MudText Typo="Typo.caption" Color="Color.Warning">Cancelled</MudText>
+                                                    </MudStack>
+                                                }
+                                                <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                                               Color="Color.Primary"
+                                                               Size="Size.Small"
+                                                               OnClick="@(() => DownloadBatchResults(batch))"
+                                                               Disabled="@(batch.Status != BatchOperationStatus.Completed)"
+                                                               title="Download Results" />
+                                            </MudStack>
+                                        </div>
+
+                                        <div class="d-flex justify-space-between">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @batch.ProcessedItems of @batch.TotalItems items processed
+                                                @if (batch.FailedItems > 0)
+                                                {
+                                                    <span style="color: var(--mud-palette-error);"> (@batch.FailedItems failed)</span>
+                                                }
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @GetTimeAgo(batch.CompletedAt)
+                                            </MudText>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(batch.ErrorMessage))
+                                        {
+                                            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+                                                @batch.ErrorMessage
+                                            </MudAlert>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudPaper Elevation="0" Class="pa-6 mt-3">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Size="Size.Large" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                    No batch operation history
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private List<BatchOperation> _activeBatches = new();
+    private List<BatchOperation> _completedBatches = new();
+
+    protected override void OnInitialized()
+    {
+        LoadBatches();
+        BatchService.OnBatchUpdated += HandleBatchUpdated;
+    }
+
+    private void LoadBatches()
+    {
+        _activeBatches = BatchService.GetActiveBatchOperations();
+        _completedBatches = BatchService.GetCompletedBatchOperations(20);
+    }
+
+    private void HandleBatchUpdated()
+    {
+        LoadBatches();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CancelBatch(Guid batchId)
+    {
+        await BatchService.CancelBatchOperationAsync(batchId);
+        Snackbar.Add("Batch operation cancelled", Severity.Warning);
+    }
+
+    private async Task ClearHistory()
+    {
+        await BatchService.ClearCompletedBatchOperationsAsync();
+        LoadBatches();
+        Snackbar.Add("Batch history cleared", Severity.Info);
+    }
+
+    private async Task DownloadBatchResults(BatchOperation batch)
+    {
+        try
+        {
+            var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/pdfInterop.js");
+
+            var successfulItems = batch.Items.Where(i => i.Status == BatchOperationStatus.Completed && i.OutputData != null).ToList();
+
+            if (!successfulItems.Any())
+            {
+                Snackbar.Add("No files to download", Severity.Warning);
+                return;
+            }
+
+            if (successfulItems.Count == 1)
+            {
+                // Download single file
+                var item = successfulItems.First();
+                await module.InvokeVoidAsync("downloadFile", item.FileName, item.OutputData);
+                Snackbar.Add("File downloaded", Severity.Success);
+            }
+            else
+            {
+                // Download multiple files as ZIP
+                var zipData = new List<object>();
+                foreach (var item in successfulItems)
+                {
+                    zipData.Add(new
+                    {
+                        name = item.FileName,
+                        data = item.OutputData
+                    });
+                }
+
+                await module.InvokeVoidAsync("downloadAsZip", $"batch_{batch.Type}_{DateTime.Now:yyyyMMdd_HHmmss}.zip", zipData);
+                Snackbar.Add($"Downloaded {successfulItems.Count} files as ZIP", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Download failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetOperationIcon(BatchOperationType type)
+    {
+        return type switch
+        {
+            BatchOperationType.Merge => Icons.Material.Filled.Merge,
+            BatchOperationType.Convert => Icons.Material.Filled.Transform,
+            BatchOperationType.Compress => Icons.Material.Filled.Compress,
+            BatchOperationType.Watermark => Icons.Material.Filled.Colorize,
+            BatchOperationType.AddPageNumbers => Icons.Material.Filled.Numbers,
+            BatchOperationType.PasswordProtect => Icons.Material.Filled.Lock,
+            BatchOperationType.Split => Icons.Material.Filled.ContentCut,
+            BatchOperationType.AddSignature => Icons.Material.Filled.Gesture,
+            _ => Icons.Material.Filled.WorkOutline
+        };
+    }
+
+    private string GetTimeAgo(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue) return "";
+
+        var timeSpan = DateTime.Now - dateTime.Value;
+
+        if (timeSpan.TotalMinutes < 1) return "Just now";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays}d ago";
+
+        return dateTime.Value.ToString("MMM dd, yyyy");
+    }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+
+    public void Dispose()
+    {
+        BatchService.OnBatchUpdated -= HandleBatchUpdated;
+    }
+}

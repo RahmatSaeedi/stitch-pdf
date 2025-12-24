@@ -1,0 +1,145 @@
+@using PdfMerger.Client.Services
+@inject IWebWorkerService WebWorkerService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h6">Performance Settings</MudText>
+
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Spacing="2">
+                    <div class="d-flex justify-space-between align-center">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">
+                                <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Class="mr-1" />
+                                Web Workers
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Process PDFs in background threads for better performance
+                            </MudText>
+                        </MudStack>
+                        <MudSwitch @bind-Value="_webWorkersEnabled"
+                                   Color="Color.Primary"
+                                   Disabled="@(!WebWorkerService.IsSupported)"
+                                   CheckedChanged="OnWebWorkersToggled" />
+                    </div>
+
+                    @if (!WebWorkerService.IsSupported)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            Web Workers are not supported in your browser
+                        </MudAlert>
+                    }
+                    else if (_webWorkersEnabled && WebWorkerService.IsInitialized)
+                    {
+                        <MudAlert Severity="Severity.Success" Dense="true">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                                <span>Web Workers active - Processing happens in background</span>
+                            </MudStack>
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudText Typo="Typo.subtitle2" Style="font-weight: 500;">Performance Benefits</MudText>
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Faster PDF processing for large files</MudText>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.TouchApp" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">UI remains responsive during operations</MudText>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Better memory management</MudText>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.ViewInAr" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Parallel processing of multiple files</MudText>
+                </MudStack>
+            </MudStack>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.subtitle2" Style="font-weight: 500;">Recommended Settings</MudText>
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Enable Web Workers for the best performance when:
+                <ul style="margin: 8px 0 0 20px; padding: 0;">
+                    <li>Merging 3+ PDF files</li>
+                    <li>Processing files larger than 5MB</li>
+                    <li>Using batch operations</li>
+                    <li>Performing image-heavy conversions</li>
+                </ul>
+            </MudAlert>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private bool _webWorkersEnabled = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if Web Workers are supported and initialized
+        _webWorkersEnabled = WebWorkerService.IsSupported;
+
+        if (_webWorkersEnabled && !WebWorkerService.IsInitialized)
+        {
+            try
+            {
+                await WebWorkerService.InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing Web Worker: {ex.Message}");
+                _webWorkersEnabled = false;
+            }
+        }
+    }
+
+    private async Task OnWebWorkersToggled()
+    {
+        if (_webWorkersEnabled && !WebWorkerService.IsInitialized)
+        {
+            try
+            {
+                var success = await WebWorkerService.InitializeAsync();
+                if (success)
+                {
+                    Snackbar.Add("Web Workers enabled - Processing will be faster!", Severity.Success);
+                }
+                else
+                {
+                    _webWorkersEnabled = false;
+                    Snackbar.Add("Failed to initialize Web Workers", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _webWorkersEnabled = false;
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+        else if (!_webWorkersEnabled)
+        {
+            Snackbar.Add("Web Workers disabled - Using standard processing", Severity.Info);
+        }
+
+        StateHasChanged();
+    }
+
+    private void Close()
+    {
+        MudDialog.Close(DialogResult.Ok(_webWorkersEnabled));
+    }
+}

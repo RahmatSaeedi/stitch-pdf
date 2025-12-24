@@ -1,0 +1,304 @@
+@using PdfMerger.Client.Services
+@using PdfMerger.Client.Models
+@inject IAdvancedPdfService AdvancedPdfService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (!_isProcessing && string.IsNullOrEmpty(_generatedCodeUrl))
+            {
+                <MudText Typo="Typo.h6">Generate QR Code or Barcode</MudText>
+
+                @if (Files.Count > 1)
+                {
+                    <MudSelect @bind-Value="_selectedFile" Label="Select PDF File" Variant="Variant.Outlined">
+                        @foreach (var file in Files)
+                        {
+                            <MudSelectItem Value="@file">@file.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (Files.Count == 1)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <strong>File:</strong> @Files[0].Name
+                    </MudAlert>
+                }
+
+                <MudRadioGroup @bind-Value="_codeType">
+                    <MudRadio T="string" Value="@("qr")" Color="Color.Primary">QR Code</MudRadio>
+                    <MudRadio T="string" Value="@("barcode")" Color="Color.Primary">Barcode</MudRadio>
+                </MudRadioGroup>
+
+                <MudTextField @bind-Value="_contentText"
+                              Label="Content / Text"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              MaxLength="@(_codeType == "qr" ? 2000 : 100)"
+                              HelperText="@(_codeType == "qr" ? "URL, text, contact info, etc." : "Numbers or text for barcode")"
+                              Required="true" />
+
+                @if (_codeType == "barcode")
+                {
+                    <MudSelect @bind-Value="_barcodeFormat" Label="Barcode Format" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("CODE128")">CODE128 (General purpose)</MudSelectItem>
+                        <MudSelectItem Value="@("EAN13")">EAN-13 (Products)</MudSelectItem>
+                        <MudSelectItem Value="@("UPC")">UPC (Products)</MudSelectItem>
+                        <MudSelectItem Value="@("CODE39")">CODE39 (Alphanumeric)</MudSelectItem>
+                        <MudSelectItem Value="@("ITF14")">ITF-14 (Shipping)</MudSelectItem>
+                    </MudSelect>
+                }
+
+                <MudNumericField @bind-Value="_pageNumber" Label="Page Number" Variant="Variant.Outlined" Min="0" HelperText="0 = first page, 1 = second page, etc." />
+
+                <MudStack Row="true" Spacing="2">
+                    <MudNumericField @bind-Value="_xPosition" Label="X Position" Variant="Variant.Outlined" Min="0" Max="600" Step="10" />
+                    <MudNumericField @bind-Value="_yPosition" Label="Y Position" Variant="Variant.Outlined" Min="0" Max="800" Step="10" />
+                </MudStack>
+
+                <MudStack Row="true" Spacing="2">
+                    <MudNumericField @bind-Value="_codeWidth" Label="Width" Variant="Variant.Outlined" Min="50" Max="400" Step="10" />
+                    <MudNumericField @bind-Value="_codeHeight" Label="Height" Variant="Variant.Outlined" Min="50" Max="400" Step="10" />
+                </MudStack>
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudText Typo="Typo.caption">
+                        @(_codeType == "qr" ? "QR codes can store URLs, text, contact info, WiFi credentials, and more." :
+                          "Barcodes are ideal for product codes, inventory tracking, and shipping labels.")
+                    </MudText>
+                </MudAlert>
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="GeneratePreview" FullWidth="true">
+                    Preview @(_codeType == "qr" ? "QR Code" : "Barcode")
+                </MudButton>
+            }
+
+            @if (_isProcessing)
+            {
+                <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                    <MudText Typo="Typo.h6">@_statusMessage</MudText>
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_generatedCodeUrl))
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">Generated @(_codeType == "qr" ? "QR Code" : "Barcode")</MudText>
+
+                    <MudPaper Elevation="2" Class="pa-4 d-flex justify-center">
+                        <img src="@_generatedCodeUrl" alt="Generated code" style="max-width: 100%; max-height: 300px;" />
+                    </MudPaper>
+
+                    <MudAlert Severity="Severity.Success">
+                        <MudText Typo="Typo.body2">
+                            <strong>Content:</strong> @_contentText
+                        </MudText>
+                    </MudAlert>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Page: @_pageNumber | Position: (@_xPosition, @_yPosition) | Size: @_codeWidth x @_codeHeight px
+                    </MudText>
+                </MudStack>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@(string.IsNullOrEmpty(_generatedCodeUrl) ? "Cancel" : "Close")</MudButton>
+        @if (string.IsNullOrEmpty(_generatedCodeUrl) && !_isProcessing)
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="AddCodeToPdf"
+                       Disabled="@(string.IsNullOrEmpty(_contentText) || _selectedFile == null)">
+                Add to PDF
+            </MudButton>
+        }
+        @if (!string.IsNullOrEmpty(_generatedCodeUrl))
+        {
+            <MudButton Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       OnClick="StartNew">
+                Generate Another
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<FileItem> Files { get; set; } = new();
+
+    private FileItem? _selectedFile;
+    private string _codeType = "qr"; // qr or barcode
+    private string _contentText = "";
+    private string _barcodeFormat = "CODE128";
+    private bool _isProcessing;
+    private string _statusMessage = "";
+    private string _generatedCodeUrl = "";
+    private string _errorMessage = "";
+
+    // Position and size defaults
+    private int _pageNumber = 0;
+    private int _xPosition = 400;
+    private int _yPosition = 700;
+    private int _codeWidth = 120;
+    private int _codeHeight = 120;
+
+    protected override void OnInitialized()
+    {
+        _selectedFile = Files.FirstOrDefault();
+    }
+
+    private async Task GeneratePreview()
+    {
+        if (string.IsNullOrWhiteSpace(_contentText))
+        {
+            _errorMessage = "Please enter content for the code";
+            return;
+        }
+
+        _isProcessing = true;
+        _statusMessage = $"Generating {(_codeType == "qr" ? "QR code" : "barcode")}...";
+        _errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            if (_codeType == "qr")
+            {
+                var options = new QRCodeOptions
+                {
+                    Width = _codeWidth,
+                    DarkColor = "#000000",
+                    LightColor = "#ffffff"
+                };
+
+                _generatedCodeUrl = await AdvancedPdfService.GenerateQRCodeAsync(_contentText, options);
+            }
+            else
+            {
+                var options = new BarcodeOptions
+                {
+                    Width = 2,
+                    Height = _codeHeight,
+                    DisplayValue = true,
+                    FontSize = 12
+                };
+
+                _generatedCodeUrl = await AdvancedPdfService.GenerateBarcodeAsync(_contentText, _barcodeFormat, options);
+            }
+
+            if (string.IsNullOrEmpty(_generatedCodeUrl))
+            {
+                _errorMessage = $"Failed to generate {(_codeType == "qr" ? "QR code" : "barcode")}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Code generation error: {ex}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            _statusMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddCodeToPdf()
+    {
+        if (_selectedFile == null || string.IsNullOrWhiteSpace(_contentText)) return;
+
+        _isProcessing = true;
+        _statusMessage = "Adding code to PDF...";
+        _errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            byte[]? result = null;
+
+            if (_codeType == "qr")
+            {
+                var options = new QRCodeOptions
+                {
+                    Width = _codeWidth,
+                    DarkColor = "#000000",
+                    LightColor = "#ffffff"
+                };
+
+                result = await AdvancedPdfService.AddQRCodeToPdfAsync(
+                    _selectedFile.Data,
+                    _contentText,
+                    pageNumber: _pageNumber,
+                    _xPosition,
+                    _yPosition,
+                    _codeWidth,
+                    options);
+            }
+            else
+            {
+                var options = new BarcodeOptions
+                {
+                    Width = 2,
+                    Height = _codeHeight,
+                    DisplayValue = true,
+                    FontSize = 12
+                };
+
+                result = await AdvancedPdfService.AddBarcodeToPdfAsync(
+                    _selectedFile.Data,
+                    _contentText,
+                    _barcodeFormat,
+                    pageNumber: _pageNumber,
+                    _xPosition,
+                    _yPosition,
+                    _codeWidth,
+                    _codeHeight,
+                    options);
+            }
+
+            if (result != null)
+            {
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                _errorMessage = "Failed to add code to PDF";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Add code to PDF error: {ex}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            _statusMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private void StartNew()
+    {
+        _generatedCodeUrl = "";
+        _errorMessage = "";
+        _contentText = "";
+        StateHasChanged();
+    }
+
+    private void Close() => MudDialog.Cancel();
+
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+}

@@ -1,0 +1,407 @@
+@using PdfMerger.Client.Models
+@inject IDialogService DialogService
+
+<MudPaper Elevation="2" Class="file-card" Style="position: relative; overflow: hidden; border-radius: 12px; cursor: grab; width: 100%; display: flex; flex-direction: column;">
+    @* Image Section *@
+    <div class="file-image-section" style="position: relative; height: 200px; background-color: #f5f5f5; display: flex; align-items: center; justify-content: center; cursor: pointer;" @onclick="OpenPreview" @onclick:stopPropagation="true">
+        @if (!string.IsNullOrEmpty(File.ThumbnailDataUrl))
+        {
+            <img src="@File.ThumbnailDataUrl"
+                 alt="@File.Name"
+                 style="@($"max-width: 100%; max-height: 100%; object-fit: contain; transform: rotate({File.Rotation}deg); transition: transform 0.3s ease;")" />
+
+            @* Preview Icon (Appears on Hover) *@
+            <div class="preview-indicator"
+                 style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        opacity: 0; transition: opacity 0.2s ease; background: rgba(33, 150, 243, 0.9);
+                        border-radius: 50%; padding: 12px; display: flex; align-items: center; justify-content: center; z-index: 1;">
+                <MudIcon Icon="@Icons.Material.Filled.ZoomIn" Size="Size.Large" Style="color: white;" />
+            </div>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudProgressCircular Color="Color.Primary" Size="Size.Medium" Indeterminate="true" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Loading...</MudText>
+            </MudStack>
+        }
+
+        @* Order Badge (Top Left) *@
+        <div style="position: absolute; top: 8px; left: 8px; z-index: 2;">
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Style="font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                #@(File.Order + 1)
+            </MudChip>
+        </div>
+
+        @* Delete Button (Top Right) *@
+        <div style="position: absolute; top: 8px; right: 8px; z-index: 2;" @onclick:stopPropagation="true">
+            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                           Color="Color.Error"
+                           Variant="Variant.Filled"
+                           Size="Size.Small"
+                           OnClick="OnRemoveClicked"
+                           Style="background-color: rgba(211, 47, 47, 0.9); box-shadow: 0 2px 4px rgba(0,0,0,0.2);" />
+        </div>
+
+        @* Drag Indicator (Appears on Hover) *@
+        <div class="drag-indicator"
+             style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    opacity: 0; transition: opacity 0.2s ease; background: rgba(0,0,0,0.75);
+                    border-radius: 8px; padding: 8px 16px; display: flex; align-items: center; gap: 6px; z-index: 2;">
+            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Medium" Style="color: white;" />
+            <MudText Typo="Typo.body2" Style="color: white; font-weight: 500;">Drag to reorder</MudText>
+        </div>
+    </div>
+
+    @* Info Section *@
+    <div class="file-info-section" style="padding: 16px; background: white; border-top: 1px solid #e0e0e0;">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle2" Style="font-weight: 600; word-break: break-word; line-height: 1.3;">
+                @File.Name
+            </MudText>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Style="flex-wrap: wrap;">
+                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">
+                    @GetFileType()
+                </MudChip>
+                @if (File.PageCount.HasValue && File.PageCount.Value > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                        @File.PageCount.Value @(File.PageCount.Value == 1 ? "Page" : "Pages")
+                    </MudChip>
+                }
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @FormatFileSize(File.Size)
+                </MudText>
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-style: italic;">
+                    Position
+                </MudText>
+                <MudNumericField @bind-Value="_positionInput"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Max="_maxPosition"
+                                 HideSpinButtons="false"
+                                 Style="width: 80px;"
+                                 Margin="Margin.Dense"
+                                 OnBlur="OnPositionBlur"
+                                 @onkeydown="OnPositionKeyDown"
+                                 Immediate="false"
+                                 HelperText=""
+                                 Class="compact-number-input" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-style: italic;">
+                    of @_maxPosition
+                </MudText>
+            </MudStack>
+
+            @* File manipulation controls *@
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Style="flex-wrap: wrap; margin-top: 8px;" @onclick:stopPropagation="true">
+                @* Page manipulation controls for PDFs *@
+                @if (File.ContentType == "application/pdf" && File.PageCount.HasValue && File.PageCount.Value > 0)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.GridOn"
+                               OnClick="OpenPageSelector">
+                        Select Pages
+                    </MudButton>
+
+                    @if (File.SelectedPages.Any())
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">
+                            @File.SelectedPages.Count of @File.PageCount pages
+                        </MudChip>
+                    }
+
+                    @if (File.PageRotations.Any())
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Icon="@Icons.Material.Filled.Rotate90DegreesCcw">
+                            @File.PageRotations.Count rotated
+                        </MudChip>
+                    }
+                }
+
+                @* Rotation controls for all file types *@
+                <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info">
+                    <MudIconButton Icon="@Icons.Material.Filled.RotateLeft"
+                                   Size="Size.Small"
+                                   OnClick="() => RotateFile(-90)"
+                                   title="Rotate Left 90°" />
+                    <MudIconButton Icon="@Icons.Material.Filled.RotateRight"
+                                   Size="Size.Small"
+                                   OnClick="() => RotateFile(90)"
+                                   title="Rotate Right 90°" />
+                </MudButtonGroup>
+
+                @if (File.Rotation != 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Icon="@Icons.Material.Filled.Rotate90DegreesCcw">
+                        @File.Rotation°
+                    </MudChip>
+                }
+
+                @* Per-file conversion settings override *@
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Settings"
+                           OnClick="OpenFileSettings">
+                    Settings
+                </MudButton>
+
+                @if (File.ConversionOverrides != null)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text" Icon="@Icons.Material.Filled.Tune">
+                        Custom
+                    </MudChip>
+                }
+            </MudStack>
+        </MudStack>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileItem File { get; set; } = null!;
+
+    [Parameter]
+    public int TotalFiles { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback<FileItem> OnPageSelectionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<FileItem> OnFileSettingsChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<(FileItem File, int NewPosition)> OnPositionChanged { get; set; }
+
+    private int _positionInput;
+    private int _maxPosition;
+
+    protected override void OnParametersSet()
+    {
+        // Update position input to match current order (1-indexed for users)
+        _positionInput = File.Order + 1;
+        _maxPosition = TotalFiles;
+    }
+
+    private async Task OnRemoveClicked()
+    {
+        await OnRemove.InvokeAsync(File.Id);
+    }
+
+    private async Task OnPositionBlur()
+    {
+        await ApplyPositionChange();
+    }
+
+    private async Task OnPositionKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyPositionChange();
+        }
+        else if (e.Key == "Escape")
+        {
+            // Reset to current position
+            _positionInput = File.Order + 1;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyPositionChange()
+    {
+        // Validate and clamp the input
+        if (_positionInput < 1) _positionInput = 1;
+        if (_positionInput > _maxPosition) _positionInput = _maxPosition;
+
+        // Convert from 1-indexed (user) to 0-indexed (internal)
+        int newOrder = _positionInput - 1;
+
+        // Only trigger change if position actually changed
+        if (newOrder != File.Order)
+        {
+            await OnPositionChanged.InvokeAsync((File, _positionInput));
+        }
+        else
+        {
+            // Reset to current position if no change
+            _positionInput = File.Order + 1;
+            StateHasChanged();
+        }
+    }
+
+    private void RotateFile(int degrees)
+    {
+        File.Rotation = (File.Rotation + degrees) % 360;
+        // Normalize negative rotations
+        if (File.Rotation < 0)
+            File.Rotation += 360;
+
+        StateHasChanged();
+    }
+
+    private async Task OpenPageSelector()
+    {
+        if (!File.PageCount.HasValue || File.PageCount.Value == 0)
+            return;
+
+        // Prepare lists for the dialog (make copies to avoid direct modification)
+        var selectedPages = new List<int>(File.SelectedPages);
+        var pageRotations = new Dictionary<int, int>(File.PageRotations);
+
+        // If no pages are selected, select all by default
+        if (selectedPages.Count == 0)
+        {
+            for (int i = 1; i <= File.PageCount.Value; i++)
+            {
+                selectedPages.Add(i);
+            }
+        }
+
+        var parameters = new DialogParameters
+        {
+            { nameof(PageSelector.FileName), File.Name },
+            { nameof(PageSelector.PageCount), File.PageCount },
+            { nameof(PageSelector.SelectedPages), selectedPages },
+            { nameof(PageSelector.PageRotations), pageRotations },
+            { nameof(PageSelector.PdfData), File.Data }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<PageSelector>("Page Selection", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            // Update the file's selected pages and rotations
+            dynamic data = result.Data;
+            File.SelectedPages = data.SelectedPages;
+            File.PageRotations = data.PageRotations;
+
+            // Notify parent component of the change
+            await OnPageSelectionChanged.InvokeAsync(File);
+        }
+    }
+
+    private async Task OpenFileSettings()
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(FileConversionSettingsDialog.FileName), File.Name },
+            { nameof(FileConversionSettingsDialog.Settings), File.ConversionOverrides ?? new PdfConversionOptions() }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<FileConversionSettingsDialog>("File Conversion Settings", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            dynamic data = result.Data;
+            File.ConversionOverrides = data.Settings;
+
+            // Notify parent component of the change
+            await OnFileSettingsChanged.InvokeAsync(File);
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string GetFileType()
+    {
+        return File.ContentType switch
+        {
+            "application/pdf" => "PDF Document",
+            "image/png" => "PNG Image",
+            "image/jpeg" or "image/jpg" => "JPEG Image",
+            "image/webp" => "WebP Image",
+            "image/gif" => "GIF Image",
+            "image/bmp" or "image/x-ms-bmp" => "BMP Image",
+            "image/svg+xml" => "SVG Vector",
+            "image/heic" or "image/heif" => "HEIC Image",
+            "image/tiff" => "TIFF Image",
+            "image/avif" => "AVIF Image",
+            "text/plain" => "Text Document",
+            "text/markdown" => "Markdown Document",
+            "text/csv" => "CSV Spreadsheet",
+            "text/html" => "HTML Document",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => "Word Document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "Excel Spreadsheet",
+            "application/vnd.ms-excel" => "Excel Spreadsheet (XLS)",
+            "application/vnd.oasis.opendocument.spreadsheet" => "ODS Spreadsheet",
+            "application/zip" or "application/x-zip-compressed" => "ZIP Archive",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task OpenPreview()
+    {
+        // Only show preview for PDFs
+        if (File.ContentType != "application/pdf" || !File.PageCount.HasValue || File.PageCount.Value == 0)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { nameof(PdfPreviewDialog.FileName), File.Name },
+            { nameof(PdfPreviewDialog.PdfData), File.Data },
+            { nameof(PdfPreviewDialog.PageCount), File.PageCount.Value }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<PdfPreviewDialog>("PDF Preview", parameters, options);
+    }
+}
+
+<style>
+    .file-image-section:hover .drag-indicator {
+        opacity: 1 !important;
+    }
+
+    .file-image-section:hover .preview-indicator {
+        opacity: 1 !important;
+    }
+
+    .file-card:active {
+        cursor: grabbing;
+    }
+</style>

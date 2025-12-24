@@ -1,0 +1,176 @@
+﻿@inherits LayoutComponentBase
+@using PdfMerger.Client.Services
+@using Microsoft.JSInterop
+@inject IThemeService ThemeService
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+@implements IDisposable
+@implements IAsyncDisposable
+
+@if (!_isOnline)
+{
+    <div style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; background-color: #ff9800; color: white; padding: 12px 16px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.2);">
+        <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.CloudOff" Size="Size.Small" />
+            <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                You're offline - App continues to work with cached data
+            </MudText>
+        </MudStack>
+    </div>
+}
+
+<MudLayout>
+    <MudAppBar Elevation="1" Dense="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="40" height="40" style="margin-right: 12px;">
+            <!-- Background -->
+            <rect width="512" height="512" fill="var(--mud-palette-primary)" rx="80"/>
+
+            <!-- PDF Document Icon -->
+            <path d="M150 100 h212 a20,20 0 0,1 20,20 v272 a20,20 0 0,1 -20,20 h-212 a20,20 0 0,1 -20,-20 v-272 a20,20 0 0,1 20,-20 z" fill="#ffffff"/>
+
+            <!-- PDF Text -->
+            <text x="256" y="240" font-family="Arial, sans-serif" font-size="80" font-weight="bold" text-anchor="middle" fill="var(--mud-palette-primary)">PDF</text>
+
+            <!-- Merge/Plus Icon -->
+            <circle cx="400" cy="120" r="50" fill="#00897b"/>
+            <path d="M400 90 v60 M370 120 h60" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+
+            <!-- Signature Icon -->
+            <path d="M160 340 q20,-10 40,0 q20,10 40,0" stroke="var(--mud-palette-primary)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        </svg>
+        <MudText Typo="Typo.h5">Stitch PDF</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Help"
+                       Color="Color.Inherit"
+                       OnClick="OpenHelpDialog"
+                       title="Help & Guide" />
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit"
+                       OnClick="ToggleTheme"
+                       title="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")" />
+        <MudIconButton Icon="@Icons.Custom.Brands.GitHub"
+                       Color="Color.Inherit"
+                       Href="https://github.com/rahmatsaeedi/stitch-pdf"
+                       Target="_blank"
+                       title="View on GitHub" />
+    </MudAppBar>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+<!-- Buy Me a Coffee Floating Button -->
+<BuyMeCoffeeButton />
+
+@code {
+    private bool _isDarkMode;
+    private bool _isOnline = true;
+    private IJSObjectReference? _networkModule;
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isDarkMode = await ThemeService.GetIsDarkModeAsync();
+        ThemeService.OnThemeChanged += OnThemeChanged;
+
+        // Apply initial body background color
+        await ApplyBodyTheme(_isDarkMode);
+    }
+
+    private async Task ApplyBodyTheme(bool isDark)
+    {
+        try
+        {
+            if (isDark)
+            {
+                await JSRuntime.InvokeVoidAsync("eval",
+                    "document.body.style.backgroundColor = '#121212'; " +
+                    "document.body.style.color = '#e0e0e0'; " +
+                    "const mainContent = document.querySelector('.mud-main-content'); " +
+                    "if (mainContent) { mainContent.style.backgroundColor = '#1a1a1a'; }");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("eval",
+                    "document.body.style.backgroundColor = '#ffffff'; " +
+                    "document.body.style.color = '#000000'; " +
+                    "const mainContent = document.querySelector('.mud-main-content'); " +
+                    "if (mainContent) { mainContent.style.backgroundColor = '#ffffff'; }");
+            }
+        }
+        catch { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _networkModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/networkStatus.js");
+                _dotNetRef = DotNetObjectReference.Create(this);
+                _isOnline = await _networkModule.InvokeAsync<bool>("initialize", _dotNetRef);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing network status: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void OnNetworkStatusChanged(bool isOnline)
+    {
+        _isOnline = isOnline;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleThemeAsync();
+        _isDarkMode = await ThemeService.GetIsDarkModeAsync();
+        StateHasChanged();
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            _isDarkMode = await ThemeService.GetIsDarkModeAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OpenHelpDialog()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        await DialogService.ShowAsync<HelpGuideDialog>("Help & Guide", options);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_networkModule != null)
+        {
+            try
+            {
+                await _networkModule.InvokeVoidAsync("dispose");
+                await _networkModule.DisposeAsync();
+            }
+            catch { }
+        }
+        _dotNetRef?.Dispose();
+    }
+}
