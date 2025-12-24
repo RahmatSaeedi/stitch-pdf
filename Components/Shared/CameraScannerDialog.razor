@@ -20,36 +20,43 @@
                     </MudAlert>
                 }
             }
-            else if (!_cameraStarted)
-            {
-                <MudStack AlignItems="AlignItems.Center" Spacing="2" Style="padding: 40px;">
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Starting camera...</MudText>
-                    @if (_showManualStart)
-                    {
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   OnClick="ManualStartCamera"
-                                   Style="margin-top: 16px;">
-                            Tap to Start Camera
-                        </MudButton>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            Camera didn't start automatically? Try tapping the button above.
-                        </MudText>
-                    }
-                </MudStack>
-            }
             else
             {
-                <MudPaper Elevation="2" Style="position: relative; background-color: #000; overflow: hidden;">
+                <MudPaper Elevation="2" Style="position: relative; background-color: #000; overflow: hidden; min-height: 300px;">
+                    <!-- Video element - always rendered but hidden during loading -->
                     <video id="camera-preview"
                            autoplay
                            playsinline
-                           style="width: 100%; height: auto; max-height: 400px; display: block;"
+                           muted
+                           style="width: 100%; height: auto; max-height: 400px; display: @(_cameraStarted ? "block" : "none");"
                            @ref="_videoElement"></video>
 
                     <canvas id="camera-canvas" style="display: none;" @ref="_canvasElement"></canvas>
 
+                    <!-- Loading overlay -->
+                    @if (!_cameraStarted)
+                    {
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; min-height: 300px;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                                <MudText Typo="Typo.body2" Color="Color.Primary">Starting camera...</MudText>
+                                @if (_showManualStart)
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               OnClick="ManualStartCamera"
+                                               Style="margin-top: 16px;">
+                                        Tap to Start Camera
+                                    </MudButton>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="color: #999;">
+                                        Camera didn't start automatically? Try tapping the button above.
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </div>
+                    }
+
+                    <!-- Capture preview overlay -->
                     @if (_capturedImage != null)
                     {
                         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center;">
@@ -74,9 +81,9 @@
                     }
                 </MudPaper>
 
-                @if (_capturedImage == null)
+                @if (_capturedImage == null && _cameraStarted)
                 {
-                    <MudStack Row="true" Justify="Justify.Center" Spacing="2">
+                    <MudStack Row="true" Justify="Justify.Center" Spacing="2" Style="margin-top: 16px;">
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    Size="Size.Large"
@@ -85,11 +92,10 @@
                             Capture
                         </MudButton>
                     </MudStack>
+                    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Style="margin-top: 8px;">
+                        Position your document within the camera view and tap Capture
+                    </MudText>
                 }
-
-                <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
-                    Position your document within the camera view and tap Capture
-                </MudText>
             }
         </MudStack>
     </DialogContent>
