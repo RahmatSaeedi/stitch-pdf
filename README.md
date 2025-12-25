@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Stitch PDF Logo](PdfMerger.Client/wwwroot/icon-192.png)
+![Stitch PDF Logo](wwwroot/icon-192.png)
 
 **A powerful, privacy-first PDF manipulation tool that runs entirely in your browser**
 
@@ -11,7 +11,7 @@
 [![PWA](https://img.shields.io/badge/PWA-enabled-5A0FC8?logo=pwa)](https://web.dev/progressive-web-apps/)
 [![No Server Required](https://img.shields.io/badge/server-not%20required-success)](https://github.com)
 
-[Features](#-features) • [Demo](#-demo) • [Installation](#-installation) • [Usage](#-usage) • [Technology](#-technology-stack) • [Privacy](#-privacy--security)
+[Features](#-features) • [Usage](#-usage) • [Privacy](#-privacy--security)
 
 </div>
 
