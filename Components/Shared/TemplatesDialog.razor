@@ -213,14 +213,52 @@
         }
     }
 
-    private void EditTemplate(Template template)
+    private async Task EditTemplate(Template template)
     {
-        Snackbar.Add($"Editing '{template.Name}' - Feature coming soon!", Severity.Info);
+        var parameters = new DialogParameters
+        {
+            { "ExistingTemplate", template }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateEditTemplateDialog>(
+            "Edit Template",
+            parameters,
+            options
+        );
+
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadTemplates();
+        }
     }
 
-    private void OpenCreateTemplateDialog()
+    private async Task OpenCreateTemplateDialog()
     {
-        Snackbar.Add("Create template - Feature integrated with operations!", Severity.Info);
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateEditTemplateDialog>("Create Template", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadTemplates();
+        }
     }
 
     private string GetTemplateIcon(Template template)

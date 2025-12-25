@@ -1,0 +1,483 @@
+@using PdfMerger.Client.Models
+@using PdfMerger.Client.Services
+@inject ITemplateService TemplateService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Info Alert *@
+            <MudAlert Severity="Severity.Info" Dense="true">
+                @if (IsEditMode)
+                {
+                    <text>Edit template settings and click Save to update.</text>
+                }
+                else
+                {
+                    <text>Templates save your preferred settings for quick reuse. Choose a type and configure the settings below.</text>
+                }
+            </MudAlert>
+
+            @* Basic Information *@
+            <MudPaper Elevation="0" Class="pa-4" Style="border: 1px solid var(--mud-palette-divider);">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Basic Information</MudText>
+
+                    <MudTextField @bind-Value="_name"
+                                  Label="Template Name"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  HelperText="A descriptive name for your template"
+                                  Immediate="true" />
+
+                    <MudTextField @bind-Value="_description"
+                                  Label="Description"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  Required="true"
+                                  HelperText="Explain what this template is for"
+                                  Immediate="true" />
+
+                    <MudSelect @bind-Value="_category"
+                               Label="Category"
+                               Variant="Variant.Outlined"
+                               HelperText="Group your templates by category">
+                        <MudSelectItem Value="@("Merge")">Merge</MudSelectItem>
+                        <MudSelectItem Value="@("Print")">Print</MudSelectItem>
+                        <MudSelectItem Value="@("Web")">Web</MudSelectItem>
+                        <MudSelectItem Value="@("Batch")">Batch</MudSelectItem>
+                        <MudSelectItem Value="@("Professional")">Professional</MudSelectItem>
+                        <MudSelectItem Value="@("Business")">Business</MudSelectItem>
+                        <MudSelectItem Value="@("Photos")">Photos</MudSelectItem>
+                        <MudSelectItem Value="@("Custom")">Custom</MudSelectItem>
+                    </MudSelect>
+
+                    <MudSelect @bind-Value="_icon"
+                               Label="Icon"
+                               Variant="Variant.Outlined"
+                               HelperText="Visual icon for your template">
+                        <MudSelectItem Value="@("merge")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Merge" Size="Size.Small" />
+                                <MudText>Merge</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("print")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Print" Size="Size.Small" />
+                                <MudText>Print</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("web")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />
+                                <MudText>Web</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("compress")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Compress" Size="Size.Small" />
+                                <MudText>Compress</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("security")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" />
+                                <MudText>Security</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("gavel")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" />
+                                <MudText>Legal</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("receipt")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Receipt" Size="Size.Small" />
+                                <MudText>Receipt</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("photo_library")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Size="Size.Small" />
+                                <MudText>Photo Library</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                    </MudSelect>
+
+                    <MudSwitch @bind-Value="_isFavorite"
+                               Label="Mark as Favorite"
+                               Color="Color.Warning" />
+                </MudStack>
+            </MudPaper>
+
+            @* Template Type *@
+            <MudPaper Elevation="0" Class="pa-4" Style="border: 1px solid var(--mud-palette-divider);">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Template Type</MudText>
+
+                    <MudSelect @bind-Value="_templateType"
+                               Label="Type"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               HelperText="Select the type of template">
+                        <MudSelectItem Value="@TemplateType.MergeSettings">Merge Settings</MudSelectItem>
+                        <MudSelectItem Value="@TemplateType.ConversionSettings">Conversion Settings</MudSelectItem>
+                        <MudSelectItem Value="@TemplateType.BatchOperation">Batch Operation</MudSelectItem>
+                        <MudSelectItem Value="@TemplateType.AdvancedOperation">Advanced Operation</MudSelectItem>
+                    </MudSelect>
+                </MudStack>
+            </MudPaper>
+
+            @* Settings Section *@
+            <MudPaper Elevation="0" Class="pa-4" Style="border: 1px solid var(--mud-palette-divider);">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Template Settings</MudText>
+
+                    @* Common Settings for Merge and Conversion *@
+                    @if (_templateType == TemplateType.MergeSettings || _templateType == TemplateType.ConversionSettings || _templateType == TemplateType.AdvancedOperation)
+                    {
+                        <MudSelect @bind-Value="_pageSize"
+                                   Label="Page Size"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("A4")">A4</MudSelectItem>
+                            <MudSelectItem Value="@("Letter")">Letter</MudSelectItem>
+                            <MudSelectItem Value="@("A3")">A3</MudSelectItem>
+                            <MudSelectItem Value="@("Legal")">Legal</MudSelectItem>
+                            <MudSelectItem Value="@("Tabloid")">Tabloid</MudSelectItem>
+                        </MudSelect>
+
+                        <MudRadioGroup @bind-Value="_orientation" T="string">
+                            <MudText Typo="Typo.body2" Class="mb-2">Orientation</MudText>
+                            <MudRadio Value="@("Portrait")" Color="Color.Primary">Portrait</MudRadio>
+                            <MudRadio Value="@("Landscape")" Color="Color.Primary">Landscape</MudRadio>
+                        </MudRadioGroup>
+
+                        <div>
+                            <MudText Typo="Typo.body2" Class="mb-2">Image Quality: @_imageQuality</MudText>
+                            <MudSlider @bind-Value="_imageQuality"
+                                       Min="0"
+                                       Max="100"
+                                       Step="5"
+                                       Color="Color.Primary">
+                                Quality: @_imageQuality
+                            </MudSlider>
+                        </div>
+                    }
+
+                    @* Conversion-Specific Settings *@
+                    @if (_templateType == TemplateType.ConversionSettings || _templateType == TemplateType.AdvancedOperation)
+                    {
+                        <MudSwitch @bind-Value="_includeMetadata"
+                                   Label="Include Metadata"
+                                   Color="Color.Primary" />
+
+                        <MudSwitch @bind-Value="_compressImages"
+                                   Label="Compress Images"
+                                   Color="Color.Primary" />
+
+                        <MudSwitch @bind-Value="_fitToPage"
+                                   Label="Fit to Page"
+                                   Color="Color.Primary" />
+                    }
+
+                    @* Batch Operation Settings *@
+                    @if (_templateType == TemplateType.BatchOperation)
+                    {
+                        <MudSelect @bind-Value="_operationType"
+                                   Label="Operation Type"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("Compress")">Compress</MudSelectItem>
+                            <MudSelectItem Value="@("Watermark")">Watermark</MudSelectItem>
+                            <MudSelectItem Value="@("AddPageNumbers")">Add Page Numbers</MudSelectItem>
+                            <MudSelectItem Value="@("PasswordProtect")">Password Protect</MudSelectItem>
+                        </MudSelect>
+
+                        @if (_operationType == "Compress")
+                        {
+                            <MudSelect @bind-Value="_quality"
+                                       Label="Compression Quality"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem Value="@("low")">Low</MudSelectItem>
+                                <MudSelectItem Value="@("medium")">Medium</MudSelectItem>
+                                <MudSelectItem Value="@("high")">High</MudSelectItem>
+                            </MudSelect>
+                        }
+
+                        @if (_operationType == "Watermark")
+                        {
+                            <MudTextField @bind-Value="_watermarkText"
+                                          Label="Watermark Text"
+                                          Variant="Variant.Outlined" />
+
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-2">Opacity: @_opacity.ToString("F2")</MudText>
+                                <MudSlider @bind-Value="_opacity"
+                                           Min="0.0"
+                                           Max="1.0"
+                                           Step="0.05"
+                                           Color="Color.Primary">
+                                    Opacity: @_opacity.ToString("F2")
+                                </MudSlider>
+                            </div>
+                        }
+                    }
+
+                    @* Advanced Operation Settings *@
+                    @if (_templateType == TemplateType.AdvancedOperation)
+                    {
+                        <MudSwitch @bind-Value="_addPageNumbers"
+                                   Label="Add Page Numbers"
+                                   Color="Color.Primary" />
+
+                        @if (_addPageNumbers)
+                        {
+                            <MudSelect @bind-Value="_pageNumberPosition"
+                                       Label="Page Number Position"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem Value="@("top-left")">Top Left</MudSelectItem>
+                                <MudSelectItem Value="@("top-center")">Top Center</MudSelectItem>
+                                <MudSelectItem Value="@("top-right")">Top Right</MudSelectItem>
+                                <MudSelectItem Value="@("bottom-left")">Bottom Left</MudSelectItem>
+                                <MudSelectItem Value="@("bottom-center")">Bottom Center</MudSelectItem>
+                                <MudSelectItem Value="@("bottom-right")">Bottom Right</MudSelectItem>
+                            </MudSelect>
+                        }
+
+                        <MudTextField @bind-Value="_margins"
+                                      Label="Margins"
+                                      Variant="Variant.Outlined"
+                                      HelperText="e.g., '1 inch', '2cm', '10mm'" />
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="Save"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(!IsValid())"
+                   StartIcon="@Icons.Material.Filled.Save">
+            @(IsEditMode ? "Update" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Template? ExistingTemplate { get; set; }
+
+    [Parameter]
+    public Dictionary<string, object>? CurrentSettings { get; set; }
+
+    private bool IsEditMode => ExistingTemplate != null;
+
+    // Basic fields
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string _category = "Custom";
+    private string _icon = "merge";
+    private bool _isFavorite = false;
+    private TemplateType _templateType = TemplateType.MergeSettings;
+
+    // Common settings
+    private string _pageSize = "A4";
+    private string _orientation = "Portrait";
+    private int _imageQuality = 90;
+
+    // Conversion settings
+    private bool _includeMetadata = false;
+    private bool _compressImages = false;
+    private bool _fitToPage = false;
+
+    // Batch operation settings
+    private string _operationType = "Compress";
+    private string _quality = "medium";
+    private string _watermarkText = string.Empty;
+    private double _opacity = 0.3;
+
+    // Advanced settings
+    private bool _addPageNumbers = false;
+    private string _pageNumberPosition = "bottom-center";
+    private string _margins = "1 inch";
+
+    protected override void OnInitialized()
+    {
+        if (IsEditMode && ExistingTemplate != null)
+        {
+            // Load existing template data
+            LoadTemplateData(ExistingTemplate);
+        }
+        else if (CurrentSettings != null)
+        {
+            // Auto-populate from current settings
+            LoadSettingsData(CurrentSettings);
+        }
+    }
+
+    private void LoadTemplateData(Template template)
+    {
+        _name = template.Name;
+        _description = template.Description;
+        _category = template.Category ?? "Custom";
+        _icon = template.Icon ?? "merge";
+        _isFavorite = template.IsFavorite;
+        _templateType = template.Type;
+
+        LoadSettingsData(template.Settings);
+    }
+
+    private void LoadSettingsData(Dictionary<string, object> settings)
+    {
+        if (settings.TryGetValue("PageSize", out var pageSize))
+            _pageSize = pageSize?.ToString() ?? "A4";
+
+        if (settings.TryGetValue("Orientation", out var orientation))
+            _orientation = orientation?.ToString() ?? "Portrait";
+
+        if (settings.TryGetValue("ImageQuality", out var imageQuality))
+            _imageQuality = Convert.ToInt32(imageQuality);
+
+        if (settings.TryGetValue("IncludeMetadata", out var includeMetadata))
+            _includeMetadata = Convert.ToBoolean(includeMetadata);
+
+        if (settings.TryGetValue("CompressImages", out var compressImages))
+            _compressImages = Convert.ToBoolean(compressImages);
+
+        if (settings.TryGetValue("FitToPage", out var fitToPage))
+            _fitToPage = Convert.ToBoolean(fitToPage);
+
+        if (settings.TryGetValue("OperationType", out var operationType))
+            _operationType = operationType?.ToString() ?? "Compress";
+
+        if (settings.TryGetValue("Quality", out var quality))
+            _quality = quality?.ToString() ?? "medium";
+
+        if (settings.TryGetValue("WatermarkText", out var watermarkText))
+            _watermarkText = watermarkText?.ToString() ?? string.Empty;
+
+        if (settings.TryGetValue("Opacity", out var opacity))
+            _opacity = Convert.ToDouble(opacity);
+
+        if (settings.TryGetValue("AddPageNumbers", out var addPageNumbers))
+            _addPageNumbers = Convert.ToBoolean(addPageNumbers);
+
+        if (settings.TryGetValue("PageNumberPosition", out var pageNumberPosition))
+            _pageNumberPosition = pageNumberPosition?.ToString() ?? "bottom-center";
+
+        if (settings.TryGetValue("Margins", out var margins))
+            _margins = margins?.ToString() ?? "1 inch";
+    }
+
+    private Dictionary<string, object> BuildSettings()
+    {
+        var settings = new Dictionary<string, object>();
+
+        // Add settings based on template type
+        if (_templateType == TemplateType.MergeSettings || _templateType == TemplateType.ConversionSettings || _templateType == TemplateType.AdvancedOperation)
+        {
+            settings["PageSize"] = _pageSize;
+            settings["Orientation"] = _orientation;
+            settings["ImageQuality"] = _imageQuality;
+        }
+
+        if (_templateType == TemplateType.ConversionSettings || _templateType == TemplateType.AdvancedOperation)
+        {
+            settings["IncludeMetadata"] = _includeMetadata;
+            settings["CompressImages"] = _compressImages;
+            settings["FitToPage"] = _fitToPage;
+        }
+
+        if (_templateType == TemplateType.BatchOperation)
+        {
+            settings["OperationType"] = _operationType;
+
+            if (_operationType == "Compress")
+            {
+                settings["Quality"] = _quality;
+            }
+
+            if (_operationType == "Watermark")
+            {
+                settings["WatermarkText"] = _watermarkText;
+                settings["Opacity"] = _opacity;
+            }
+        }
+
+        if (_templateType == TemplateType.AdvancedOperation)
+        {
+            settings["AddPageNumbers"] = _addPageNumbers;
+            if (_addPageNumbers)
+            {
+                settings["PageNumberPosition"] = _pageNumberPosition;
+            }
+            settings["Margins"] = _margins;
+        }
+
+        return settings;
+    }
+
+    private bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(_name)) return false;
+        if (string.IsNullOrWhiteSpace(_description)) return false;
+        return true;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            var settings = BuildSettings();
+
+            if (IsEditMode && ExistingTemplate != null)
+            {
+                // Update existing template
+                ExistingTemplate.Name = _name;
+                ExistingTemplate.Description = _description;
+                ExistingTemplate.Type = _templateType;
+                ExistingTemplate.Settings = settings;
+                ExistingTemplate.Icon = _icon;
+                ExistingTemplate.Category = _category;
+                ExistingTemplate.IsFavorite = _isFavorite;
+
+                await TemplateService.UpdateTemplateAsync(ExistingTemplate);
+                Snackbar.Add("Template updated successfully!", Severity.Success);
+            }
+            else
+            {
+                // Create new template
+                var template = await TemplateService.CreateTemplateAsync(
+                    _name,
+                    _description,
+                    _templateType,
+                    settings,
+                    _category
+                );
+
+                template.Icon = _icon;
+                template.IsFavorite = _isFavorite;
+                await TemplateService.UpdateTemplateAsync(template);
+
+                Snackbar.Add("Template created successfully!", Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving template: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

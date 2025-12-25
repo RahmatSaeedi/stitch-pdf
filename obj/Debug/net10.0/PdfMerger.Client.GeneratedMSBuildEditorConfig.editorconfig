@@ -55,6 +55,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcQ3JlYXRlQmF0Y2hEaWFsb2cucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/rahmat/AI/PDF-Merger/PdfMerger.Client/Components/Shared/CreateEditTemplateDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcQ3JlYXRlRWRpdFRlbXBsYXRlRGlhbG9nLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/rahmat/AI/PDF-Merger/PdfMerger.Client/Components/Shared/FileConversionSettingsDialog.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTaGFyZWRcRmlsZUNvbnZlcnNpb25TZXR0aW5nc0RpYWxvZy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
