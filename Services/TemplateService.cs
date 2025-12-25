@@ -191,7 +191,8 @@ public class TemplateService : ITemplateService
 
     public async Task LoadDefaultTemplatesAsync()
     {
-        await EnsureInitializedAsync();
+        // Don't call EnsureInitializedAsync here to avoid infinite recursion
+        // This method is called from within EnsureInitializedAsync
 
         var defaultTemplates = DefaultTemplates.GetDefaultTemplates();
         foreach (var template in defaultTemplates)
