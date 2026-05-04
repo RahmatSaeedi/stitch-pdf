@@ -1,0 +1,369 @@
+/* RTL (Right-to-Left) Language Support */
+/* These styles are applied when the document has dir="rtl" */
+
+/* ===== Base RTL Direction ===== */
+html[dir="rtl"],
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+/* ===== Typography ===== */
+.rtl .mud-typography {
+    text-align: right;
+}
+
+.rtl .mud-typography-align-left {
+    text-align: right;
+}
+
+.rtl .mud-typography-align-right {
+    text-align: left;
+}
+
+/* ===== Layout Adjustments ===== */
+/* Reverse flex direction for horizontal stacks */
+.rtl .mud-stack-row {
+    flex-direction: row-reverse;
+}
+
+/* App Bar */
+.rtl .mud-appbar .mud-stack-row {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-appbar-toolbar {
+    flex-direction: row-reverse;
+}
+
+/* ===== Margins and Padding ===== */
+/* Swap start/end margins */
+.rtl [class*="ml-"] {
+    margin-left: 0 !important;
+}
+
+.rtl [class*="mr-"] {
+    margin-right: 0 !important;
+}
+
+.rtl .me-2, .rtl .me-3, .rtl .me-4 {
+    margin-right: 0 !important;
+}
+
+.rtl .ms-2, .rtl .ms-3, .rtl .ms-4 {
+    margin-left: 0 !important;
+}
+
+/* ===== Icons and Buttons ===== */
+.rtl .mud-icon-button {
+    /* RTL-aware icon positioning */
+}
+
+/* Flip directional icons */
+.rtl .mud-icon-forward,
+.rtl .mud-icon-arrow-right,
+.rtl .mud-icon-chevron-right,
+.rtl .mud-icon-navigate-next {
+    transform: scaleX(-1);
+}
+
+.rtl .mud-icon-back,
+.rtl .mud-icon-arrow-left,
+.rtl .mud-icon-chevron-left,
+.rtl .mud-icon-navigate-before {
+    transform: scaleX(-1);
+}
+
+/* ===== Form Elements ===== */
+.rtl .mud-input,
+.rtl .mud-input-control,
+.rtl .mud-select,
+.rtl .mud-autocomplete {
+    text-align: right;
+}
+
+.rtl .mud-input-label {
+    right: 0;
+    left: auto;
+    transform-origin: right center;
+}
+
+.rtl .mud-input-adornment-start {
+    margin-left: 8px;
+    margin-right: 0;
+}
+
+.rtl .mud-input-adornment-end {
+    margin-right: 8px;
+    margin-left: 0;
+}
+
+/* Checkbox and Radio */
+.rtl .mud-checkbox,
+.rtl .mud-radio {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-checkbox .mud-typography,
+.rtl .mud-radio .mud-typography {
+    margin-right: 8px;
+    margin-left: 0;
+}
+
+/* ===== Lists ===== */
+.rtl .mud-list-item {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-list-item-icon {
+    margin-left: 16px;
+    margin-right: 0;
+}
+
+.rtl .mud-list-item-text {
+    text-align: right;
+}
+
+/* ===== Cards ===== */
+.rtl .mud-card-content {
+    text-align: right;
+}
+
+.rtl .mud-card-actions {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+}
+
+/* ===== Dialogs ===== */
+.rtl .mud-dialog-title {
+    text-align: right;
+}
+
+.rtl .mud-dialog-content {
+    text-align: right;
+}
+
+.rtl .mud-dialog-actions {
+    flex-direction: row-reverse;
+}
+
+/* ===== Tables ===== */
+.rtl .mud-table th,
+.rtl .mud-table td {
+    text-align: right;
+}
+
+.rtl .mud-table-head th:first-child {
+    border-radius: 0 4px 0 0;
+}
+
+.rtl .mud-table-head th:last-child {
+    border-radius: 4px 0 0 0;
+}
+
+/* ===== Snackbar ===== */
+.rtl .mud-snackbar {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-snackbar-content-message {
+    text-align: right;
+}
+
+/* ===== Menu ===== */
+.rtl .mud-menu-item {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-menu-item-icon {
+    margin-left: 16px;
+    margin-right: 0;
+}
+
+/* ===== Tabs ===== */
+.rtl .mud-tabs-tabbar-content {
+    flex-direction: row-reverse;
+}
+
+/* ===== Stepper ===== */
+.rtl .mud-stepper {
+    flex-direction: row-reverse;
+}
+
+/* ===== Expansion Panel ===== */
+.rtl .mud-expand-panel-header {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-expand-panel-text {
+    text-align: right;
+}
+
+/* ===== Tooltip ===== */
+.rtl .mud-tooltip {
+    text-align: right;
+}
+
+/* ===== File Upload Zone ===== */
+.rtl .file-upload-zone {
+    text-align: center; /* Keep centered for drop zone */
+}
+
+/* ===== File List ===== */
+.rtl .file-card {
+    flex-direction: row-reverse;
+}
+
+.rtl .file-info {
+    text-align: right;
+    margin-left: 0;
+    margin-right: 12px;
+}
+
+.rtl .file-actions {
+    flex-direction: row-reverse;
+}
+
+/* ===== Progress Indicators ===== */
+.rtl .mud-progress-linear {
+    direction: rtl;
+}
+
+/* ===== Breadcrumbs ===== */
+.rtl .mud-breadcrumbs {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-breadcrumb-separator {
+    transform: scaleX(-1);
+}
+
+/* ===== Pagination ===== */
+.rtl .mud-pagination {
+    flex-direction: row-reverse;
+}
+
+/* ===== Alert ===== */
+.rtl .mud-alert {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-alert-icon {
+    margin-left: 12px;
+    margin-right: 0;
+}
+
+.rtl .mud-alert-message {
+    text-align: right;
+}
+
+/* ===== Chip ===== */
+.rtl .mud-chip {
+    flex-direction: row-reverse;
+}
+
+.rtl .mud-chip-icon {
+    margin-left: 4px;
+    margin-right: 0;
+}
+
+.rtl .mud-chip-close-button {
+    margin-right: 4px;
+    margin-left: 0;
+}
+
+/* ===== Custom App Styles ===== */
+/* App Bar Logo */
+.rtl .mud-appbar svg {
+    margin-left: 12px;
+    margin-right: 0;
+}
+
+/* Tool Buttons Grid */
+.rtl .tool-buttons-grid {
+    direction: rtl;
+}
+
+/* Conversion Settings */
+.rtl .conversion-settings {
+    text-align: right;
+}
+
+/* Help Dialog */
+.rtl .help-content {
+    text-align: right;
+}
+
+.rtl .help-content ul,
+.rtl .help-content ol {
+    padding-right: 24px;
+    padding-left: 0;
+}
+
+/* Language Selector */
+.rtl .language-selector .mud-menu-item {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+/* ===== Animation Adjustments ===== */
+/* Reverse slide animations for RTL */
+@keyframes rtl-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes rtl-slide-out {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.rtl .slide-in {
+    animation: rtl-slide-in 0.3s ease-out;
+}
+
+.rtl .slide-out {
+    animation: rtl-slide-out 0.3s ease-out;
+}
+
+/* ===== Scrollbar for RTL ===== */
+.rtl ::-webkit-scrollbar {
+    /* Keep scrollbar on left for RTL */
+}
+
+/* ===== Persian/Arabic Script Font ===== */
+/* Vazirmatn font is loaded via Google Fonts API in index.html */
+/* No @font-face needed - the API handles font delivery dynamically */
+
+.rtl {
+    font-family: 'Vazirmatn', 'Roboto', sans-serif;
+}
+
+/* ===== Number Handling ===== */
+/* Keep numbers LTR in RTL context */
+.rtl .ltr-numbers {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+/* File sizes, dates, etc. */
+.rtl .file-size,
+.rtl .file-date,
+.rtl .page-number,
+.rtl .percentage {
+    direction: ltr;
+    unicode-bidi: isolate;
+    display: inline-block;
+}
