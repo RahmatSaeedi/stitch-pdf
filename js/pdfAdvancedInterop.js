@@ -257,23 +257,44 @@ export async function addPageNumbers(pdfBytes, options = {}) {
 // Compress PDF (reduce file size)
 export async function compressPDF(pdfBytes, quality = 'medium') {
     try {
-        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-
-        // Compression options based on quality
-        const compressionOptions = {
-            high: { objectsPerTick: 50, updateFieldAppearances: false },
-            medium: { objectsPerTick: 200, updateFieldAppearances: false },
-            low: { objectsPerTick: 500, updateFieldAppearances: false }
+        const qualityMap = {
+            high:   { scale: 1.5, jpegQuality: 0.85 },
+            medium: { scale: 1.2, jpegQuality: 0.70 },
+            low:    { scale: 1.0, jpegQuality: 0.50 }
         };
+        const { scale, jpegQuality } = qualityMap[quality] || qualityMap.medium;
 
-        const options = compressionOptions[quality] || compressionOptions.medium;
+        const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+        const pdfSource = await loadingTask.promise;
+        const pageCount = pdfSource.numPages;
 
-        const pdfBytesResult = await pdfDoc.save({
-            useObjectStreams: true,
-            addDefaultPage: false,
-            ...options
-        });
+        const outputPdf = await PDFLib.PDFDocument.create();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
 
+        for (let i = 1; i <= pageCount; i++) {
+            const page = await pdfSource.getPage(i);
+            const viewport = page.getViewport({ scale });
+            const w = Math.round(viewport.width);
+            const h = Math.round(viewport.height);
+
+            canvas.width = w;
+            canvas.height = h;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, w, h);
+
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            const jpegDataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+            const base64 = jpegDataUrl.split(',')[1];
+            const jpegBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+
+            const jpegImage = await outputPdf.embedJpg(jpegBytes);
+            const pdfPage = outputPdf.addPage([w, h]);
+            pdfPage.drawImage(jpegImage, { x: 0, y: 0, width: w, height: h });
+        }
+
+        const pdfBytesResult = await outputPdf.save();
         return new Uint8Array(pdfBytesResult);
     } catch (error) {
         console.error('Error compressing PDF:', error);
