@@ -100,24 +100,45 @@ async function mergePdfs(files, options) {
 }
 
 async function compressPdf(pdfBytes, quality) {
+    if (!pdfjsLib) throw new Error('PDF.js not initialized');
     if (!pdfLib) throw new Error('PDF-LIB not initialized');
 
-    const { PDFDocument } = pdfLib;
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-
-    // Compression is handled by save options
-    const saveOptions = {
-        useObjectStreams: true,
-        addDefaultPage: false
+    const qualityMap = {
+        high:   { scale: 1.5, jpegQuality: 0.85 },
+        medium: { scale: 1.2, jpegQuality: 0.70 },
+        low:    { scale: 1.0, jpegQuality: 0.50 }
     };
+    const { scale, jpegQuality } = qualityMap[quality] || qualityMap.medium;
 
-    if (quality === 'high') {
-        saveOptions.objectsPerTick = 50;
-    } else if (quality === 'low') {
-        saveOptions.objectsPerTick = 500;
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+    const pdfSource = await loadingTask.promise;
+    const pageCount = pdfSource.numPages;
+
+    const { PDFDocument } = pdfLib;
+    const outputPdf = await PDFDocument.create();
+
+    for (let i = 1; i <= pageCount; i++) {
+        const page = await pdfSource.getPage(i);
+        const viewport = page.getViewport({ scale });
+        const w = Math.round(viewport.width);
+        const h = Math.round(viewport.height);
+
+        const canvas = new OffscreenCanvas(w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, w, h);
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: jpegQuality });
+        const jpegBytes = new Uint8Array(await blob.arrayBuffer());
+
+        const jpegImage = await outputPdf.embedJpg(jpegBytes);
+        const pdfPage = outputPdf.addPage([w, h]);
+        pdfPage.drawImage(jpegImage, { x: 0, y: 0, width: w, height: h });
     }
 
-    const compressedBytes = await pdfDoc.save(saveOptions);
+    const compressedBytes = await outputPdf.save();
     return compressedBytes.buffer;
 }
 
